@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { SUBSCRIPTION_PLANS } from '../data/mockData';
+import { formatWhatsAppPhone } from '../config/adminConfig';
 
 export default function CreateAgencyModal() {
   const { isCreateAgencyOpen, setIsCreateAgencyOpen, createAgency, switchAgency } = useApp();
@@ -64,11 +65,11 @@ export default function CreateAgencyModal() {
 
   const getWhatsAppShareUrl = () => {
     if (!createdResult) return '';
-    const cleanPhone = createdResult.agency.phone.replace(/[^0-9]/g, '');
+    const cleanPhone = formatWhatsAppPhone(createdResult.agency.phone);
     const planName = createdResult.agency.plan || 'Pro';
     const planPrice = (createdResult.agency.monthlyFee || 39000).toLocaleString('fr-FR');
     const message = encodeURIComponent(
-      `Bonjour ${createdResult.agency.managerName},\n\nVotre espace privé pour l'agence *${createdResult.agency.name}* sur *PlacePro* est prêt !\n\n🎁 *7 jours d'essai gratuit activés* (Formule choisie : *${planName}* - ${planPrice} FCFA).\n\nAccédez à votre tableau de bord directement sur votre téléphone :\n👉 ${createdResult.accessLink}\n\nEnregistrez ce lien dans vos favoris WhatsApp pour gérer vos candidats, vos placements et vos commissions.`
+      `Bonjour ${createdResult.agency.managerName},\n\nVotre espace privé pour l'agence *${createdResult.agency.name}* sur *PlacePro* est prêt !\n\n🎁 *7 jours d'essai gratuit activés* (Formule choisie : *${planName}* - ${planPrice} FCFA).\n\nAccédez à votre tableau de bord directement sur votre téléphone en cliquant sur le lien ci-dessous :\n\n${createdResult.accessLink}\n\n(💡 Si le lien n'est pas cliquable en bleu sur votre WhatsApp, enregistrez ce numéro dans vos contacts ou cliquez sur « Faire confiance »).\n\nEnregistrez ce lien dans vos favoris WhatsApp pour gérer vos candidats, vos placements et vos commissions.`
     );
     return `https://wa.me/${cleanPhone}?text=${message}`;
   };

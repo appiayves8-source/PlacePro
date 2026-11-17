@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { BuildingIcon, UsersIcon, ChevronRightIcon, CheckCircleIcon } from './Icons';
+import { formatWhatsAppPhone } from '../config/adminConfig';
 
 export default function ClientsView() {
   const { 
@@ -44,7 +45,7 @@ export default function ClientsView() {
   }, [clients, searchTerm, typeFilter, neighborhoodFilter]);
 
   const getWhatsAppContactUrl = (phone, clientName) => {
-    const cleanPhone = (phone || '').replace(/[^0-9]/g, '');
+    const cleanPhone = formatWhatsAppPhone(phone);
     const message = encodeURIComponent(
       `Bonjour ${clientName}, c'est l'agence ${agency.name}. Nous restons à votre disposition pour le suivi de votre personnel placé. Avez-vous besoin d'une assistance ou d'un nouveau profil ?`
     );
@@ -512,7 +513,7 @@ export default function ClientsView() {
 
                 <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                   <a
-                    href={`https://wa.me/${(cli.phone || '').replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`Bonjour ${cli.contactPerson || cli.name}, voici votre lien d'accès officiel à votre Espace Client ${agency.name} :\n\n${getFamilyPortalLink(cli.id)}\n\nVous pouvez y retrouver le profil de votre personnel placé et nous envoyer un signalement direct en cas d'urgence.`)}`}
+                    href={`https://wa.me/${formatWhatsAppPhone(cli.phone)}?text=${encodeURIComponent(`Bonjour ${cli.contactPerson || cli.name}, voici votre lien d'accès officiel à votre Espace Client ${agency.name} :\n\n${getFamilyPortalLink(cli.id)}\n\n(💡 Si le lien n'est pas cliquable en bleu, enregistrez ce numéro dans vos contacts).\n\nVous pouvez y retrouver le profil de votre personnel placé et nous envoyer un signalement direct en cas d'urgence.`)}`}
                     target="_blank"
                     rel="noreferrer"
                     className="btn"

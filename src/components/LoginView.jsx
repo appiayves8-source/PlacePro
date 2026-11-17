@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { ADMIN_CONFIG } from '../config/adminConfig';
 
 export default function LoginView() {
   const { 
@@ -10,14 +9,15 @@ export default function LoginView() {
     adminPassword,
     updateAdminPassword,
     lastActiveSpace,
-    updateAgencyPassword, 
-    setIsCreateAgencyOpen 
+    currentAgencyId,
+    updateAgencyPassword
   } = useApp();
 
-  // Initialisation de l'espace sélectionné : par défaut le dernier espace actif (ex: 'admin' ou id d'agence)
+  // Détermination de l'espace actif : soit 'admin', soit l'agence mémorisée
   const [selectedSpace, setSelectedSpace] = useState(() => {
     if (lastActiveSpace === 'admin') return 'admin';
     if (lastActiveSpace && agencies.some(a => a.agency_id === lastActiveSpace)) return lastActiveSpace;
+    if (currentAgencyId && agencies.some(a => a.agency_id === currentAgencyId)) return currentAgencyId;
     return agencies.length > 0 ? agencies[0].agency_id : 'admin';
   });
 
@@ -38,8 +38,9 @@ export default function LoginView() {
     }
   }, [agencies, selectedSpace]);
 
-  // États pour le changement de mot de passe
+  // États pour le changement de mot de passe sécurisé
   const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showNewPassword, setShowNewPassword] = useState(false);
@@ -52,7 +53,7 @@ export default function LoginView() {
     ? "Administration PlacePro (Cyrille)" 
     : (selectedAgency?.name || "Mon Espace Agence");
 
-  const currentProvisionalPassword = isAdminSpace 
+  const expectedCurrentPassword = isAdminSpace 
     ? (adminPassword || '0000') 
     : (selectedAgency?.password || '1234');
 
@@ -71,13 +72,13 @@ export default function LoginView() {
         loginAsSuperAdmin();
         return;
       } else {
-        setError("Mot de passe administrateur incorrect (Code par défaut : 0000 ou cliquez sur 'Changer de mot de passe' ci-dessous).");
+        setError("Mot de passe administrateur incorrect.");
         return;
       }
     }
 
     // 2. Connexion à un espace Agence
-    // Le code maître de Cyrille (0000 ou mot de passe admin) donne également accès Super Admin
+    // Le code maître de Cyrille donne également accès Super Admin
     if (password.trim() === adminPassword || password.trim() === '0000' || password.trim() === 'admin') {
       loginAsSuperAdmin();
       return;
@@ -85,7 +86,7 @@ export default function LoginView() {
 
     const expectedPassword = selectedAgency?.password || '1234';
     if (password.trim() !== expectedPassword) {
-      setError(`Mot de passe incorrect pour cette agence. Si vous ne l'avez pas changé, le code est "${expectedPassword}" ou cliquez sur "Changer de mot de passe" ci-dessous.`);
+      setError("Mot de passe incorrect pour cet espace agence.");
       return;
     }
 
@@ -97,6 +98,17 @@ export default function LoginView() {
     e.preventDefault();
     setPasswordChangeError(null);
 
+    if (!oldPassword.trim()) {
+      setPasswordChangeError("Veuillez saisir votre mot de passe actuel.");
+      return;
+    }
+
+    // Vérification de l'ancien mot de passe
+    if (oldPassword.trim() !== expectedCurrentPassword && oldPassword.trim() !== '0000') {
+      setPasswordChangeError("L'ancien mot de passe saisi est incorrect.");
+      return;
+    }
+
     if (!newPassword.trim()) {
       setPasswordChangeError("Veuillez saisir votre nouveau mot de passe.");
       return;
@@ -106,13 +118,13 @@ export default function LoginView() {
       return;
     }
     if (newPassword !== confirmPassword) {
-      setPasswordChangeError("Les deux mots de passe saisis ne sont pas identiques.");
+      setPasswordChangeError("Les deux nouveaux mots de passe saisis ne sont pas identiques.");
       return;
     }
 
     if (isAdminSpace) {
       updateAdminPassword(newPassword.trim());
-      setSuccessMsg("Mot de passe Super Admin enregistré avec succès ! Connexion à la Console...");
+      setSuccessMsg("Mot de passe Administrateur mis à jour avec succès !");
       setTimeout(() => {
         loginAsSuperAdmin();
       }, 700);
@@ -120,7 +132,7 @@ export default function LoginView() {
       if (updateAgencyPassword && selectedSpace) {
         updateAgencyPassword(selectedSpace, newPassword.trim());
       }
-      setSuccessMsg(`Mot de passe pour ${selectedSpaceName} enregistré avec succès ! Connexion...`);
+      setSuccessMsg("Nouveau mot de passe enregistré avec succès ! Connexion...");
       setTimeout(() => {
         login(selectedSpace);
       }, 700);
@@ -140,15 +152,15 @@ export default function LoginView() {
       <div style={{
         backgroundColor: '#FFFFFF',
         borderRadius: '24px',
-        maxWidth: '460px',
+        maxWidth: '430px',
         width: '100%',
         padding: '36px 28px',
         boxShadow: '0 20px 40px -10px rgba(14, 26, 58, 0.12)',
         border: '1.5px solid var(--color-border)',
         position: 'relative'
       }}>
-        {/* Brand Logo PlacePro */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '22px', textAlign: 'center' }}>
+        {/* En-tête PlacePro Sobre */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '24px', textAlign: 'center' }}>
           <div style={{
             width: '56px',
             height: '56px',
@@ -168,109 +180,41 @@ export default function LoginView() {
           <h1 style={{ fontSize: '24px', fontWeight: '900', color: 'var(--color-navy)', margin: 0, letterSpacing: '-0.5px' }}>
             PlacePro
           </h1>
-          <p style={{ fontSize: '13px', color: '#64748B', marginTop: '4px', maxWidth: '340px' }}>
-            Portail de gestion et suivi du personnel de maison en Côte d'Ivoire
+          <p style={{ fontSize: '13px', color: '#64748B', marginTop: '4px' }}>
+            Portail de gestion et suivi du personnel de maison
           </p>
         </div>
 
-        {/* Message informatif d'état */}
-        {!isChangingPassword ? (
-          <div style={{
-            backgroundColor: '#FAF5EA',
-            border: '1px solid var(--color-gold-border)',
-            borderRadius: '12px',
-            padding: '12px 14px',
-            marginBottom: '22px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px'
-          }}>
-            <span style={{ fontSize: '18px' }}>🔒</span>
-            <div style={{ fontSize: '12px', color: 'var(--color-navy)', fontWeight: '600', lineHeight: 1.4 }}>
-              Session sécurisée. Identifiez-vous pour accéder à votre tableau de bord.
-            </div>
-          </div>
-        ) : (
-          <div style={{
-            backgroundColor: '#EEF2FF',
-            border: '1px solid #C7D2FE',
-            borderRadius: '12px',
-            padding: '12px 14px',
-            marginBottom: '20px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px'
-          }}>
-            <span style={{ fontSize: '20px' }}>🔑</span>
-            <div>
-              <div style={{ fontSize: '13px', color: '#1E1B4B', fontWeight: '800' }}>
-                Modification du mot de passe
-              </div>
-              <div style={{ fontSize: '11.5px', color: '#4338CA', marginTop: '2px' }}>
-                Espace : <strong>{selectedSpaceName}</strong>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* ========================================================
-            MODE 1 : FORMULAIRE DE CONNEXION PRINCIPAL
+            MODE 1 : FORMULAIRE DE CONNEXION ÉPURÉ
             ======================================================== */}
         {!isChangingPassword ? (
           <form onSubmit={handleLoginSubmit}>
-            {/* 1. Nom d'utilisateur / Espace (DÉJÀ LÀ) */}
-            <div style={{ marginBottom: '16px' }}>
+            {/* 1. Nom d'utilisateur / Nom de l'agence (PRÉREMPLI ET VERROUILLÉ) */}
+            <div style={{ marginBottom: '18px' }}>
               <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: 'var(--color-navy)', marginBottom: '6px' }}>
-                Nom d'utilisateur / Espace *
+                Nom d'utilisateur / Espace
               </label>
 
-              {agencies.length === 0 ? (
-                /* Quand aucune agence n'existe encore en base, l'espace Admin Cyrille est déjà là */
-                <div style={{
-                  width: '100%',
-                  padding: '12px 14px',
-                  borderRadius: '10px',
-                  border: '1.5px solid var(--color-gold)',
-                  backgroundColor: 'rgba(212, 167, 44, 0.08)',
-                  color: 'var(--color-navy)',
-                  fontSize: '13.5px',
-                  fontWeight: '800',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px'
-                }}>
-                  <span style={{ fontSize: '16px' }}>👑</span>
-                  <span>Administration PlacePro (Cyrille)</span>
-                </div>
-              ) : (
-                /* Quand des agences existent, le sélecteur permet de choisir, prérempli avec le dernier espace */
-                <select
-                  value={selectedSpace}
-                  onChange={(e) => {
-                    setSelectedSpace(e.target.value);
-                    setError(null);
-                  }}
-                  style={{
-                    width: '100%',
-                    padding: '12px 14px',
-                    borderRadius: '10px',
-                    border: '1.5px solid var(--color-border)',
-                    backgroundColor: '#F8FAFC',
-                    color: 'var(--color-navy)',
-                    fontSize: '13.5px',
-                    fontWeight: '700',
-                    outline: 'none',
-                    cursor: 'pointer'
-                  }}
-                >
-                  <option value="admin">👑 Administration PlacePro (Cyrille)</option>
-                  {agencies.map(ag => (
-                    <option key={ag.agency_id} value={ag.agency_id}>
-                      🏢 {ag.name} ({ag.neighborhood || ag.city})
-                    </option>
-                  ))}
-                </select>
-              )}
+              <div style={{
+                width: '100%',
+                padding: '13px 14px',
+                borderRadius: '12px',
+                border: '1.5px solid var(--color-border)',
+                backgroundColor: '#F8FAFC',
+                color: 'var(--color-navy)',
+                fontSize: '14px',
+                fontWeight: '800',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                boxSizing: 'border-box'
+              }}>
+                <span style={{ fontSize: '18px' }}>{isAdminSpace ? '👑' : '🏢'}</span>
+                <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {selectedSpaceName}
+                </span>
+              </div>
             </div>
 
             {/* 2. Mot de passe */}
@@ -282,7 +226,7 @@ export default function LoginView() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  style={{ background: 'none', border: 'none', color: 'var(--color-gold)', fontSize: '11px', fontWeight: '700', cursor: 'pointer' }}
+                  style={{ background: 'none', border: 'none', color: 'var(--color-gold)', fontSize: '11.5px', fontWeight: '700', cursor: 'pointer' }}
                 >
                   {showPassword ? 'Masquer' : 'Afficher'}
                 </button>
@@ -299,33 +243,35 @@ export default function LoginView() {
                 autoFocus
                 style={{
                   width: '100%',
-                  padding: '12px 14px',
-                  borderRadius: '10px',
+                  padding: '13px 14px',
+                  borderRadius: '12px',
                   border: '1.5px solid var(--color-border)',
                   backgroundColor: '#FFFFFF',
-                  fontSize: '13.5px',
+                  fontSize: '14px',
                   color: 'var(--color-navy)',
-                  outline: 'none'
+                  outline: 'none',
+                  boxSizing: 'border-box'
                 }}
               />
 
               {error && (
-                <div style={{ marginTop: '6px', padding: '8px 10px', backgroundColor: '#FEF2F2', borderRadius: '8px', border: '1px solid #FECACA' }}>
-                  <p style={{ color: '#B91C1C', fontSize: '11.5px', margin: 0, lineHeight: 1.35 }}>
+                <div style={{ marginTop: '8px', padding: '9px 12px', backgroundColor: '#FEF2F2', borderRadius: '8px', border: '1px solid #FECACA' }}>
+                  <p style={{ color: '#B91C1C', fontSize: '12px', margin: 0, fontWeight: '600' }}>
                     {error}
                   </p>
                 </div>
               )}
             </div>
 
-            {/* 3. Changer de mot de passe (JUSTE EN DESSOUS DU MOT DE PASSE) */}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '18px', marginTop: '6px' }}>
+            {/* 3. Changer de mot de passe */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '20px', marginTop: '6px' }}>
               <button
                 type="button"
                 onClick={() => {
                   setIsChangingPassword(true);
                   setError(null);
                   setPasswordChangeError(null);
+                  setOldPassword('');
                   setNewPassword('');
                   setConfirmPassword('');
                 }}
@@ -339,8 +285,7 @@ export default function LoginView() {
                   display: 'flex',
                   alignItems: 'center',
                   gap: '6px',
-                  padding: '4px 6px',
-                  borderRadius: '6px'
+                  padding: '4px 0'
                 }}
               >
                 <span>🔑</span>
@@ -348,7 +293,7 @@ export default function LoginView() {
               </button>
             </div>
 
-            {/* 4. Bouton de Connexion */}
+            {/* 4. Bouton de Connexion Principal */}
             <button
               type="submit"
               className="btn"
@@ -358,133 +303,71 @@ export default function LoginView() {
                 width: '100%',
                 padding: '14px',
                 borderRadius: '12px',
-                fontSize: '14px',
+                fontSize: '14.5px',
                 fontWeight: '900',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: '8px',
                 boxShadow: '0 4px 14px rgba(212, 167, 44, 0.35)',
-                marginBottom: '16px',
-                cursor: 'pointer'
+                cursor: 'pointer',
+                border: 'none'
               }}
             >
-              <span>Se connecter à {isAdminSpace ? "la Console Administrateur" : (selectedAgency?.name || "mon espace")}</span>
+              <span>Se connecter</span>
               <span>→</span>
             </button>
-
-            {/* 5. Inscrire un nouvel espace agence */}
-            <div style={{ textAlign: 'center', marginBottom: '14px' }}>
-              <button
-                type="button"
-                onClick={() => setIsCreateAgencyOpen(true)}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: '#475569',
-                  fontSize: '12px',
-                  fontWeight: '700',
-                  cursor: 'pointer',
-                  textDecoration: 'underline'
-                }}
-              >
-                + Inscrire un nouvel espace agence de placement
-              </button>
-            </div>
           </form>
         ) : (
           /* ========================================================
-             MODE 2 : MODIFIER LE MOT DE PASSE (AVEC CODE FALSIFIÉ / PROVISOIRE)
+             MODE 2 : CHANGEMENT DE MOT DE PASSE SÉCURISÉ
              ======================================================== */
           <form onSubmit={handlePasswordChangeSubmit}>
-            {/* Espace concerné */}
-            <div style={{ marginBottom: '14px' }}>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: 'var(--color-navy)', marginBottom: '6px' }}>
-                Espace sélectionné :
-              </label>
-              {agencies.length === 0 ? (
-                <div style={{
-                  width: '100%',
-                  padding: '10px 12px',
-                  borderRadius: '10px',
-                  border: '1.5px solid var(--color-border)',
-                  backgroundColor: '#F8FAFC',
-                  color: 'var(--color-navy)',
-                  fontSize: '13px',
-                  fontWeight: '700',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px'
-                }}>
-                  <span>👑</span>
-                  <span>Administration PlacePro (Cyrille)</span>
-                </div>
-              ) : (
-                <select
-                  value={selectedSpace}
-                  onChange={(e) => {
-                    setSelectedSpace(e.target.value);
-                    setPasswordChangeError(null);
-                  }}
-                  style={{
-                    width: '100%',
-                    padding: '10px 12px',
-                    borderRadius: '10px',
-                    border: '1.5px solid var(--color-border)',
-                    backgroundColor: '#F8FAFC',
-                    color: 'var(--color-navy)',
-                    fontSize: '13px',
-                    fontWeight: '700',
-                    outline: 'none',
-                    cursor: 'pointer'
-                  }}
-                >
-                  <option value="admin">👑 Administration PlacePro (Cyrille)</option>
-                  {agencies.map(ag => (
-                    <option key={ag.agency_id} value={ag.agency_id}>
-                      🏢 {ag.name} ({ag.neighborhood || ag.city})
-                    </option>
-                  ))}
-                </select>
-              )}
-            </div>
-
-            {/* Affichage du mot de passe actuel / provisoire (mot de passe falsifié) */}
             <div style={{
-              backgroundColor: '#F8FAFC',
-              border: '1.5px dashed #CBD5E1',
+              backgroundColor: '#EEF2FF',
+              border: '1px solid #C7D2FE',
               borderRadius: '12px',
               padding: '12px 14px',
-              marginBottom: '18px'
+              marginBottom: '18px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px'
             }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                <span style={{ fontSize: '11px', fontWeight: '800', color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
-                  Mot de passe actuel / provisoire
-                </span>
-                <span style={{ fontSize: '10.5px', fontWeight: '700', backgroundColor: '#FEF3C7', color: '#B45309', padding: '2px 8px', borderRadius: '4px' }}>
-                  Code actif
-                </span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <code style={{
-                  fontSize: '16px',
-                  fontWeight: '900',
-                  color: 'var(--color-navy)',
-                  backgroundColor: '#FFFFFF',
-                  padding: '4px 10px',
-                  borderRadius: '6px',
-                  border: '1px solid var(--color-border)',
-                  letterSpacing: '1px'
-                }}>
-                  {currentProvisionalPassword}
-                </code>
-                <span style={{ fontSize: '11px', color: '#64748B' }}>
-                  {isAdminSpace ? "(Code maître Super Admin par défaut)" : "(Code agence par défaut)"}
-                </span>
+              <span style={{ fontSize: '20px' }}>🔑</span>
+              <div>
+                <div style={{ fontSize: '13px', color: '#1E1B4B', fontWeight: '800' }}>
+                  Changement de mot de passe
+                </div>
+                <div style={{ fontSize: '11.5px', color: '#4338CA', marginTop: '2px' }}>
+                  Espace : <strong>{selectedSpaceName}</strong>
+                </div>
               </div>
             </div>
 
-            {/* Champ 1 : Nouveau mot de passe */}
+            {/* Ancien mot de passe */}
+            <div style={{ marginBottom: '14px' }}>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: 'var(--color-navy)', marginBottom: '6px' }}>
+                Mot de passe actuel *
+              </label>
+              <input
+                type="password"
+                value={oldPassword}
+                onChange={(e) => setOldPassword(e.target.value)}
+                placeholder="Entrez votre mot de passe actuel"
+                style={{
+                  width: '100%',
+                  padding: '11px 13px',
+                  borderRadius: '10px',
+                  border: '1.5px solid var(--color-border)',
+                  backgroundColor: '#FFFFFF',
+                  fontSize: '13px',
+                  outline: 'none',
+                  boxSizing: 'border-box'
+                }}
+              />
+            </div>
+
+            {/* Nouveau mot de passe */}
             <div style={{ marginBottom: '14px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
                 <label style={{ fontSize: '12px', fontWeight: '700', color: 'var(--color-navy)' }}>
@@ -505,18 +388,18 @@ export default function LoginView() {
                 placeholder="Entrez le nouveau mot de passe"
                 style={{
                   width: '100%',
-                  padding: '12px 14px',
+                  padding: '11px 13px',
                   borderRadius: '10px',
                   border: '1.5px solid var(--color-border)',
                   backgroundColor: '#FFFFFF',
-                  fontSize: '13.5px',
-                  color: 'var(--color-navy)',
-                  outline: 'none'
+                  fontSize: '13px',
+                  outline: 'none',
+                  boxSizing: 'border-box'
                 }}
               />
             </div>
 
-            {/* Champ 2 : Confirmer nouveau mot de passe */}
+            {/* Confirmer le nouveau mot de passe */}
             <div style={{ marginBottom: '18px' }}>
               <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: 'var(--color-navy)', marginBottom: '6px' }}>
                 Confirmer le nouveau mot de passe *
@@ -528,21 +411,21 @@ export default function LoginView() {
                 placeholder="Confirmez le nouveau mot de passe"
                 style={{
                   width: '100%',
-                  padding: '12px 14px',
+                  padding: '11px 13px',
                   borderRadius: '10px',
                   border: '1.5px solid var(--color-border)',
                   backgroundColor: '#FFFFFF',
-                  fontSize: '13.5px',
-                  color: 'var(--color-navy)',
-                  outline: 'none'
+                  fontSize: '13px',
+                  outline: 'none',
+                  boxSizing: 'border-box'
                 }}
               />
             </div>
 
             {passwordChangeError && (
               <div style={{
-                marginBottom: '16px',
-                padding: '10px 12px',
+                marginBottom: '14px',
+                padding: '9px 12px',
                 backgroundColor: '#FEF2F2',
                 borderRadius: '8px',
                 border: '1px solid #FECACA',
@@ -556,8 +439,8 @@ export default function LoginView() {
 
             {successMsg && (
               <div style={{
-                marginBottom: '16px',
-                padding: '10px 12px',
+                marginBottom: '14px',
+                padding: '9px 12px',
                 backgroundColor: '#ECFDF5',
                 borderRadius: '8px',
                 border: '1px solid #A7F3D0',
@@ -577,7 +460,7 @@ export default function LoginView() {
                 backgroundColor: 'var(--color-gold)',
                 color: 'var(--color-navy)',
                 width: '100%',
-                padding: '14px',
+                padding: '13px',
                 borderRadius: '12px',
                 fontSize: '14px',
                 fontWeight: '900',
@@ -588,10 +471,10 @@ export default function LoginView() {
                 boxShadow: '0 4px 14px rgba(212, 167, 44, 0.35)',
                 marginBottom: '10px',
                 cursor: successMsg ? 'default' : 'pointer',
-                opacity: successMsg ? 0.7 : 1
+                border: 'none'
               }}
             >
-              <span>Enregistrer et accéder au tableau de bord</span>
+              <span>Enregistrer et se connecter</span>
               <span>→</span>
             </button>
 
@@ -604,34 +487,44 @@ export default function LoginView() {
               }}
               style={{
                 width: '100%',
-                padding: '10px',
+                padding: '8px',
                 background: 'none',
                 border: 'none',
                 color: '#64748B',
-                fontSize: '12.5px',
+                fontSize: '12px',
                 fontWeight: '700',
-                cursor: 'pointer',
-                marginBottom: '16px'
+                cursor: 'pointer'
               }}
             >
-              ← Annuler et revenir à la connexion
+              ← Annuler
             </button>
           </form>
         )}
 
-        {/* Assistance directe WhatsApp */}
-        <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: '16px', textAlign: 'center' }}>
-          <div style={{ fontSize: '12px', color: '#64748B' }}>
-            Assistance directe WhatsApp :{' '}
-            <a
-              href={ADMIN_CONFIG.getWhatsAppLink("Bonjour Cyrille, j'ai besoin d'aide pour mon espace PlacePro.")}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{ color: 'var(--color-gold)', fontWeight: '700', textDecoration: 'none' }}
-            >
-              {ADMIN_CONFIG.phoneFormatted}
-            </a>
-          </div>
+        {/* Accès discret Administrateur (Uniquement si Cyrille doit basculer sur sa console) */}
+        <div style={{ marginTop: '22px', paddingTop: '16px', borderTop: '1px solid #F1F5F9', textAlign: 'center' }}>
+          <button
+            type="button"
+            onClick={() => {
+              if (isAdminSpace) {
+                if (agencies.length > 0) setSelectedSpace(agencies[0].agency_id);
+              } else {
+                setSelectedSpace('admin');
+              }
+              setError(null);
+              setIsChangingPassword(false);
+            }}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: '#94A3B8',
+              fontSize: '11px',
+              cursor: 'pointer',
+              fontWeight: '600'
+            }}
+          >
+            {isAdminSpace ? "← Revenir à l'espace Agence" : "👑 Accès Administrateur Plateforme"}
+          </button>
         </div>
 
       </div>

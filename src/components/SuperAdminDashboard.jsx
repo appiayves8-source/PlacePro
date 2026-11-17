@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { BuildingIcon, WalletIcon, UsersIcon, CheckCircleIcon, AlertTriangleIcon } from './Icons';
-import { ADMIN_CONFIG } from '../config/adminConfig';
+import { ADMIN_CONFIG, formatWhatsAppPhone } from '../config/adminConfig';
 
 export default function SuperAdminDashboard() {
   const { 
@@ -49,7 +49,7 @@ export default function SuperAdminDashboard() {
 
   // WhatsApp de relance poli pour l'abonnement
   const getWhatsAppRenewalReminder = (agency) => {
-    const cleanPhone = (agency.phone || '').replace(/[^0-9]/g, '');
+    const cleanPhone = formatWhatsAppPhone(agency.phone);
     const fee = (agency.monthlyFee || 39000).toLocaleString('fr-FR');
     const expiry = new Date(agency.subscriptionExpiry || Date.now()).toLocaleDateString('fr-FR');
     

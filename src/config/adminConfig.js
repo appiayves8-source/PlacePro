@@ -29,3 +29,12 @@ export const ADMIN_CONFIG = {
     return `https://wa.me/225${national10}?text=${encodeURIComponent(messageText)}`;
   }
 };
+
+// Formateur de numéro de téléphone ivoirien pour liens wa.me (ajoute 225 si 10 chiffres)
+export const formatWhatsAppPhone = (phone) => {
+  const digits = (phone || '').replace(/[^0-9]/g, '');
+  if (!digits) return '';
+  if (digits.startsWith('225') && digits.length >= 12) return digits;
+  if (digits.length === 10) return `225${digits}`;
+  return digits;
+};

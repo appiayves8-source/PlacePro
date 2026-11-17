@@ -341,7 +341,8 @@ export function AppProvider({ children }) {
     // Sauvegarde immédiate dans Supabase
     await placeproService.createAgency(newAgency);
 
-    const accessLink = `${window.location.origin}${window.location.pathname}?agency=${cleanId}`;
+    const baseAppUrl = (import.meta.env.VITE_APP_URL || `${window.location.origin}${window.location.pathname}`).replace(/\/$/, '');
+    const accessLink = `${baseAppUrl}/?agency=${cleanId}`;
     return {
       agency: newAgency,
       accessLink

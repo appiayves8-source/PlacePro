@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { AlertTriangleIcon, WalletIcon, ChevronRightIcon, CheckCircleIcon } from './Icons';
 import ReportDisappearanceModal from './ReportDisappearanceModal';
+import { formatWhatsAppPhone } from '../config/adminConfig';
 
 export default function CandidateDetail() {
   const { 
@@ -58,7 +59,7 @@ export default function CandidateDetail() {
 
   // WhatsApp relance
   const getWhatsAppReminderUrl = () => {
-    const phone = (client?.phone || candidate.phone || '').replace(/[^0-9]/g, '');
+    const phone = formatWhatsAppPhone(client?.phone || candidate.phone);
     const message = encodeURIComponent(
       `Bonjour, c'est l'agence ${agency.name}.\n\nNous faisons le point sur le contrat de placement de ${candidate.firstName} ${candidate.lastName} (${candidate.job}).\n\nCommission restante : ${remainingCommission.toLocaleString('fr-FR')} FCFA.\n\nMerci de nous contacter pour convenir du règlement par Wave, Orange Money ou MTN. Bonne journée !`
     );
@@ -387,7 +388,7 @@ export default function CandidateDetail() {
 
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
           <a
-            href={`https://wa.me/${(candidate.phone || '').replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`Bonjour ${candidate.firstName}, voici votre lien officiel d'accès à votre Espace Employé PlacePro (${agency.name}) :\n\n${getWorkerPortalLink(candidate.id)}\n\nVous pouvez y consulter vos documents, votre score de confiance et nous envoyer un signalement en cas de problème urgent.`)}`}
+            href={`https://wa.me/${formatWhatsAppPhone(candidate.phone)}?text=${encodeURIComponent(`Bonjour ${candidate.firstName}, voici votre lien officiel d'accès à votre Espace Employé PlacePro (${agency.name}) :\n\n${getWorkerPortalLink(candidate.id)}\n\n(💡 Si le lien n'est pas cliquable en bleu, enregistrez ce numéro dans vos contacts).\n\nVous pouvez y consulter vos documents, votre score de confiance et nous envoyer un signalement en cas de problème urgent.`)}`}
             target="_blank"
             rel="noreferrer"
             className="btn"
