@@ -1,0 +1,18 @@
+{
+  "name": "PlacePro - Suivi Agence",
+  "short_name": "PlacePro",
+  "description": "Application de suivi du personnel après placement pour les agences en Côte d'Ivoire",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F4F6FA",
+  "theme_color": "#0E1A3A",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
