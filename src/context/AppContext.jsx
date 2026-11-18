@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { placeproService } from '../services/placeproService';
 import { SUBSCRIPTION_PLANS } from '../data/mockData';
+import { getPublicAppUrl } from '../config/adminConfig';
 
 const AppContext = createContext();
 
@@ -391,7 +392,7 @@ export function AppProvider({ children }) {
     // Sauvegarde immédiate dans Supabase
     await placeproService.createAgency(newAgency);
 
-    const baseAppUrl = (import.meta.env.VITE_APP_URL || `${window.location.origin}${window.location.pathname}`).replace(/\/$/, '');
+    const baseAppUrl = getPublicAppUrl();
     const accessLink = `${baseAppUrl}/?agency=${cleanId}`;
     return {
       agency: newAgency,
@@ -683,11 +684,11 @@ export function AppProvider({ children }) {
   };
 
   const getWorkerPortalLink = (candidateId) => {
-    return `${window.location.origin}${window.location.pathname}?agency=${currentAgency.agency_id}&view=worker&cand=${candidateId}`;
+    return `${getPublicAppUrl()}/?agency=${currentAgency.agency_id}&view=worker&cand=${candidateId}`;
   };
 
   const getFamilyPortalLink = (clientId) => {
-    return `${window.location.origin}${window.location.pathname}?agency=${currentAgency.agency_id}&view=family&cli=${clientId}`;
+    return `${getPublicAppUrl()}/?agency=${currentAgency.agency_id}&view=family&cli=${clientId}`;
   };
 
   // ========================================================

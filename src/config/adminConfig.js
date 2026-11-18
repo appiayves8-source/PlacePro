@@ -30,6 +30,25 @@ export const ADMIN_CONFIG = {
   }
 };
 
+// URL officielle de production PlacePro en ligne sur Vercel
+export const PRODUCTION_URL = "https://place-pro-mu.vercel.app";
+
+// Helper universel pour garantir que tous les liens partagés (WhatsApp / SMS)
+// pointent toujours vers le vrai domaine HTTPS, même si testés depuis localhost
+export const getPublicAppUrl = () => {
+  const envUrl = import.meta.env.VITE_APP_URL;
+  if (envUrl && !envUrl.includes('localhost')) {
+    return envUrl.replace(/\/$/, '');
+  }
+  if (typeof window !== 'undefined') {
+    const origin = window.location.origin;
+    if (origin && !origin.includes('localhost') && !origin.includes('127.0.0.1')) {
+      return origin.replace(/\/$/, '');
+    }
+  }
+  return PRODUCTION_URL;
+};
+
 // Formateur de numéro de téléphone ivoirien pour liens wa.me (ajoute 225 si 10 chiffres)
 export const formatWhatsAppPhone = (phone) => {
   const digits = (phone || '').replace(/[^0-9]/g, '');
