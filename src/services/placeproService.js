@@ -20,6 +20,25 @@ export const placeproService = {
     }
   },
 
+  async checkAgencyPhoneExists(phone) {
+    if (!isSupabaseConfigured || !supabase) return false;
+    try {
+      const cleanPhone = (phone || '').replace(/[^0-9]/g, '');
+      const phone10 = cleanPhone.length >= 10 ? cleanPhone.slice(-10) : cleanPhone;
+      if (!phone10) return false;
+      const { data, error } = await supabase
+        .from('agencies')
+        .select('id, name')
+        .eq('phone', phone10)
+        .maybeSingle();
+      if (error) throw error;
+      return !!data;
+    } catch (e) {
+      console.error('[Supabase] Erreur checkAgencyPhoneExists:', e);
+      return false;
+    }
+  },
+
   async createAgency(agency) {
     if (!isSupabaseConfigured || !supabase) return agency;
     try {
@@ -29,11 +48,16 @@ export const placeproService = {
         .insert(dbRow)
         .select()
         .single();
-      if (error) throw error;
+      if (error) {
+        if (error.code === '23505' || error.message?.includes('duplicate key') || error.message?.includes('agencies_phone_unique_idx')) {
+          throw new Error("Ce numéro de téléphone est déjà associé à un compte agence existant. Un numéro ne peut être lié qu'à un seul compte.");
+        }
+        throw error;
+      }
       return mapAgencyFromDb(data);
     } catch (e) {
       console.error('[Supabase] Erreur createAgency:', e);
-      return agency;
+      throw e;
     }
   },
 
@@ -89,6 +113,43 @@ export const placeproService = {
       return true;
     } catch (e) {
       console.error('[Supabase] Erreur updateAgencySubscription:', e);
+      return false;
+    }
+  },
+
+  // ==========================================
+  // CONFIGURATION SYSTÈME & ADMINISTRATION
+  // ==========================================
+  async getAdminPassword() {
+    if (!isSupabaseConfigured || !supabase) return null;
+    try {
+      const { data, error } = await supabase
+        .from('app_settings')
+        .select('value')
+        .eq('key', 'admin_password')
+        .maybeSingle();
+      if (error) throw error;
+      return data?.value || '0000';
+    } catch (e) {
+      console.error('[Supabase] Erreur getAdminPassword:', e);
+      return null;
+    }
+  },
+
+  async updateAdminPassword(newPassword) {
+    if (!isSupabaseConfigured || !supabase) return false;
+    try {
+      const { error } = await supabase
+        .from('app_settings')
+        .upsert({
+          key: 'admin_password',
+          value: newPassword,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'key' });
+      if (error) throw error;
+      return true;
+    } catch (e) {
+      console.error('[Supabase] Erreur updateAdminPassword:', e);
       return false;
     }
   },

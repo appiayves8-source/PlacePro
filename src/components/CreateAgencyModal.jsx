@@ -4,7 +4,7 @@ import { SUBSCRIPTION_PLANS } from '../data/mockData';
 import { formatWhatsAppPhone } from '../config/adminConfig';
 
 export default function CreateAgencyModal() {
-  const { isCreateAgencyOpen, setIsCreateAgencyOpen, createAgency, switchAgency } = useApp();
+  const { isCreateAgencyOpen, setIsCreateAgencyOpen, createAgency, switchAgency, agencies } = useApp();
 
   const [formData, setFormData] = useState({
     name: '',
@@ -31,28 +31,51 @@ export default function CreateAgencyModal() {
     e.preventDefault();
     const newErrors = {};
 
-    if (!formData.name.trim()) newErrors.name = "Le nom de l'agence est obligatoire.";
-    if (!formData.managerName.trim()) newErrors.managerName = "Le nom de la gérante/responsable est obligatoire.";
-    if (!formData.phone.trim()) newErrors.phone = "Le numéro WhatsApp de la gérante est obligatoire.";
+    if (!formData.name.trim() || formData.name.trim().length < 3) {
+      newErrors.name = "Le nom de l'agence est obligatoire (au moins 3 caractères).";
+    }
+    if (!formData.managerName.trim() || formData.managerName.trim().length < 2) {
+      newErrors.managerName = "Le nom de la directrice/responsable est obligatoire.";
+    }
+
+    const cleanPhoneDigits = (formData.phone || '').replace(/[^0-9]/g, '');
+    const phone10 = cleanPhoneDigits.length >= 10 ? cleanPhoneDigits.slice(-10) : cleanPhoneDigits;
+    if (phone10.length !== 10) {
+      newErrors.phone = "Le numéro WhatsApp doit comporter exactement 10 chiffres (norme CI).";
+    } else {
+      const validPrefixes = ['01', '05', '07'];
+      if (!validPrefixes.includes(phone10.slice(0, 2))) {
+        newErrors.phone = "Le numéro doit commencer par 01, 05 ou 07 (Moov, MTN ou Orange).";
+      } else {
+        const localExists = agencies && agencies.some(a => (a.phone || '').replace(/[^0-9]/g, '').slice(-10) === phone10);
+        if (localExists) {
+          newErrors.phone = "Ce numéro de téléphone est déjà associé à un compte agence existant. Un numéro = un seul compte.";
+        }
+      }
+    }
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       return;
     }
 
-    const selectedPlan = SUBSCRIPTION_PLANS.find(p => p.id === formData.plan) || SUBSCRIPTION_PLANS[1];
+    try {
+      const selectedPlan = SUBSCRIPTION_PLANS.find(p => p.id === formData.plan) || SUBSCRIPTION_PLANS[1];
 
-    const result = await createAgency({
-      name: formData.name.trim(),
-      managerName: formData.managerName.trim(),
-      phone: formData.phone.trim(),
-      neighborhood: formData.neighborhood.trim(),
-      city: formData.city.trim(),
-      plan: selectedPlan.name,
-      monthlyFee: selectedPlan.price
-    });
+      const result = await createAgency({
+        name: formData.name.trim(),
+        managerName: formData.managerName.trim(),
+        phone: phone10,
+        neighborhood: formData.neighborhood.trim(),
+        city: formData.city.trim(),
+        plan: selectedPlan.name,
+        monthlyFee: selectedPlan.price
+      });
 
-    setCreatedResult(result);
+      setCreatedResult(result);
+    } catch (err) {
+      setErrors(prev => ({ ...prev, phone: err.message || "Erreur lors de la création de l'agence." }));
+    }
   };
 
   const handleCopyLink = () => {

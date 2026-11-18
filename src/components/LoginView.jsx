@@ -72,6 +72,7 @@ export default function LoginView({ initialTab = 'login', onBackToLanding }) {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [passwordChangeError, setPasswordChangeError] = useState(null);
   const [successMsg, setSuccessMsg] = useState(null);
+  const [isSavingPassword, setIsSavingPassword] = useState(false);
 
   // ========================================================
   // ÉTATS D'INSCRIPTION SÉCURISÉE (TAB 2)
@@ -96,6 +97,8 @@ export default function LoginView({ initialTab = 'login', onBackToLanding }) {
     setError(null);
 
     const cleanId = (identifier || '').trim().replace(/\s+/g, '').replace(/^(\+225)/, '');
+    const cleanDigits = cleanId.replace(/[^0-9]/g, '');
+    const clean10 = cleanDigits.length >= 10 ? cleanDigits.slice(-10) : cleanDigits;
     const cleanPwd = (password || '').trim();
 
     if (!cleanId) {
@@ -108,9 +111,11 @@ export default function LoginView({ initialTab = 'login', onBackToLanding }) {
       return;
     }
 
-    // 1. Connexion Super Administrateur (Cyrille) uniquement via 'admin'
+    const isMasterPassword = cleanPwd === (adminPassword || '0000') || cleanPwd === '0000';
+
+    // 1. Accès Super Administrateur (Cyrille) via le mot-clé 'admin'
     if (cleanId.toLowerCase() === 'admin') {
-      if (cleanPwd === (adminPassword || '0000') || cleanPwd === '0000' || cleanPwd === 'admin') {
+      if (isMasterPassword || cleanPwd === 'admin') {
         loginAsSuperAdmin();
         return;
       } else {
@@ -119,18 +124,40 @@ export default function LoginView({ initialTab = 'login', onBackToLanding }) {
       }
     }
 
-    // 2. Connexion Espace Agence (Recherche par numéro de téléphone ou ID d'agence)
+    // 2. Accès Super Administrateur ou Agence via le numéro de téléphone officiel Cyrille (0502629821)
+    if (clean10 === '0502629821') {
+      // Si mot de passe administrateur maître saisi
+      if (isMasterPassword) {
+        loginAsSuperAdmin();
+        return;
+      }
+
+      // Si une agence de test existe avec ce numéro (ex: AGD Agence) et mot de passe agence saisi
+      const foundTestAgency = agencies.find(a => {
+        const agPhone = (a.phone || '').replace(/[^0-9]/g, '');
+        return agPhone && agPhone.slice(-10) === '0502629821';
+      });
+
+      if (foundTestAgency && cleanPwd === (foundTestAgency.password || '1234')) {
+        login(foundTestAgency.agency_id);
+        return;
+      }
+
+      setError("Mot de passe incorrect pour le compte administrateur ou l'agence associée.");
+      return;
+    }
+
+    // 3. Connexion Espace Agence standard (Recherche par numéro de téléphone ou ID d'agence)
     const foundAgency = agencies.find(a => {
       const agPhone = (a.phone || '').replace(/[^0-9]/g, '');
-      const targetPhone = cleanId.replace(/[^0-9]/g, '');
-      const matchPhone = agPhone && targetPhone && (agPhone.slice(-10) === targetPhone.slice(-10));
+      const matchPhone = agPhone && clean10 && (agPhone.slice(-10) === clean10);
       const matchId = a.agency_id && a.agency_id.toLowerCase() === cleanId.toLowerCase();
       return matchPhone || matchId;
     });
 
     if (foundAgency) {
       const expectedPwd = foundAgency.password || '1234';
-      if (cleanPwd === expectedPwd || cleanPwd === (adminPassword || '0000') || cleanPwd === '0000') {
+      if (cleanPwd === expectedPwd || isMasterPassword) {
         login(foundAgency.agency_id);
         return;
       } else {
@@ -139,8 +166,8 @@ export default function LoginView({ initialTab = 'login', onBackToLanding }) {
       }
     }
 
-    // 3. Secours : si mot de passe maître administrateur '0000'
-    if (cleanPwd === (adminPassword || '0000') || cleanPwd === '0000') {
+    // 4. Secours : si mot de passe maître administrateur '0000'
+    if (isMasterPassword) {
       loginAsSuperAdmin();
       return;
     }
@@ -148,12 +175,15 @@ export default function LoginView({ initialTab = 'login', onBackToLanding }) {
     setError("Aucun compte agence trouvé avec ce numéro. Vérifiez votre saisie ou créez votre espace avec 7 jours offerts.");
   };
 
-  // Soumission de modification du mot de passe
-  const handlePasswordChangeSubmit = (e) => {
+  // Soumission de modification du mot de passe avec sauvegarde en base de données Supabase
+  const handlePasswordChangeSubmit = async (e) => {
     e.preventDefault();
     setPasswordChangeError(null);
 
     const cleanId = (identifier || '').trim().replace(/\s+/g, '').replace(/^(\+225)/, '');
+    const cleanDigits = cleanId.replace(/[^0-9]/g, '');
+    const clean10 = cleanDigits.length >= 10 ? cleanDigits.slice(-10) : cleanDigits;
+
     if (!cleanId) {
       setPasswordChangeError("Veuillez d'abord renseigner votre numéro de téléphone ou identifiant dans le formulaire.");
       return;
@@ -164,65 +194,92 @@ export default function LoginView({ initialTab = 'login', onBackToLanding }) {
       return;
     }
 
-    // Vérifier si Admin
-    const isAdminId = cleanId.toLowerCase() === 'admin' || cleanId === '0502629821';
-    if (isAdminId) {
-      if (oldPassword.trim() !== (adminPassword || '0000') && oldPassword.trim() !== '0000') {
-        setPasswordChangeError("L'ancien mot de passe administrateur est incorrect.");
-        return;
-      }
-      if (newPassword.trim().length < 4) {
-        setPasswordChangeError("Le nouveau mot de passe doit comporter au moins 4 caractères.");
-        return;
-      }
-      if (newPassword !== confirmPassword) {
-        setPasswordChangeError("Les deux nouveaux mots de passe ne sont pas identiques.");
-        return;
-      }
-      updateAdminPassword(newPassword.trim());
-      setSuccessMsg("Mot de passe Administrateur mis à jour avec succès !");
-      setTimeout(() => {
-        setIsChangingPassword(false);
-        setPassword(newPassword.trim());
-      }, 800);
-      return;
-    }
-
-    // Vérifier si Agence
-    const foundAgency = agencies.find(a => {
-      const agPhone = (a.phone || '').replace(/[^0-9]/g, '');
-      const targetPhone = cleanId.replace(/[^0-9]/g, '');
-      return (agPhone && targetPhone && agPhone.slice(-10) === targetPhone.slice(-10)) || (a.agency_id.toLowerCase() === cleanId.toLowerCase());
-    });
-
-    if (!foundAgency) {
-      setPasswordChangeError("Aucune agence trouvée avec ce numéro de téléphone.");
-      return;
-    }
-
-    const expectedPwd = foundAgency.password || '1234';
-    if (oldPassword.trim() !== expectedPwd && oldPassword.trim() !== (adminPassword || '0000') && oldPassword.trim() !== '0000') {
-      setPasswordChangeError("L'ancien mot de passe est incorrect.");
-      return;
-    }
-
     if (newPassword.trim().length < 4) {
       setPasswordChangeError("Le nouveau mot de passe doit comporter au moins 4 caractères.");
       return;
     }
+
     if (newPassword !== confirmPassword) {
       setPasswordChangeError("Les deux nouveaux mots de passe ne sont pas identiques.");
       return;
     }
 
-    if (updateAgencyPassword) {
-      updateAgencyPassword(foundAgency.agency_id, newPassword.trim());
+    setIsSavingPassword(true);
+
+    try {
+      // A. Vérifier si Administrateur (identifiant 'admin' ou téléphone Cyrille 0502629821 avec mot de passe admin)
+      const isAdminId = cleanId.toLowerCase() === 'admin' || clean10 === '0502629821';
+      const isOldAdminPassword = oldPassword.trim() === (adminPassword || '0000') || oldPassword.trim() === '0000';
+
+      if (cleanId.toLowerCase() === 'admin' || (clean10 === '0502629821' && isOldAdminPassword)) {
+        if (!isOldAdminPassword) {
+          setPasswordChangeError("L'ancien mot de passe administrateur est incorrect.");
+          setIsSavingPassword(false);
+          return;
+        }
+
+        const ok = await updateAdminPassword(newPassword.trim());
+        if (ok) {
+          setSuccessMsg("Mot de passe Administrateur enregistré avec succès dans la base de données !");
+        } else {
+          setSuccessMsg("Mot de passe Administrateur mis à jour avec succès !");
+        }
+        setTimeout(() => {
+          setIsChangingPassword(false);
+          setPassword(newPassword.trim());
+          setOldPassword('');
+          setNewPassword('');
+          setConfirmPassword('');
+        }, 1200);
+        return;
+      }
+
+      // B. Vérifier si Agence
+      const foundAgency = agencies.find(a => {
+        const agPhone = (a.phone || '').replace(/[^0-9]/g, '');
+        const matchPhone = agPhone && clean10 && (agPhone.slice(-10) === clean10);
+        const matchId = a.agency_id && a.agency_id.toLowerCase() === cleanId.toLowerCase();
+        return matchPhone || matchId;
+      });
+
+      if (!foundAgency) {
+        if (isAdminId && !isOldAdminPassword) {
+          setPasswordChangeError("L'ancien mot de passe administrateur est incorrect.");
+        } else {
+          setPasswordChangeError("Aucun compte agence trouvé avec ce numéro de téléphone.");
+        }
+        setIsSavingPassword(false);
+        return;
+      }
+
+      const expectedPwd = foundAgency.password || '1234';
+      if (oldPassword.trim() !== expectedPwd && !isOldAdminPassword) {
+        setPasswordChangeError("L'ancien mot de passe est incorrect.");
+        setIsSavingPassword(false);
+        return;
+      }
+
+      if (updateAgencyPassword) {
+        const ok = await updateAgencyPassword(foundAgency.agency_id, newPassword.trim());
+        if (ok) {
+          setSuccessMsg(`Mot de passe de l'agence « ${foundAgency.name} » enregistré avec succès dans la base de données !`);
+        } else {
+          setSuccessMsg(`Mot de passe de l'agence « ${foundAgency.name} » mis à jour !`);
+        }
+      }
+
+      setTimeout(() => {
+        setIsChangingPassword(false);
+        setPassword(newPassword.trim());
+        setOldPassword('');
+        setNewPassword('');
+        setConfirmPassword('');
+      }, 1200);
+    } catch (err) {
+      setPasswordChangeError("Une erreur est survenue lors de l'enregistrement. Veuillez vérifier votre connexion.");
+    } finally {
+      setIsSavingPassword(false);
     }
-    setSuccessMsg(`Mot de passe de l'agence « ${foundAgency.name} » mis à jour avec succès !`);
-    setTimeout(() => {
-      setIsChangingPassword(false);
-      setPassword(newPassword.trim());
-    }, 800);
   };
 
   // Soumission de création d'agence sécurisée
@@ -251,6 +308,13 @@ export default function LoginView({ initialTab = 'login', onBackToLanding }) {
     const validPrefixes = ['01', '05', '07'];
     if (!validPrefixes.includes(phone10.slice(0, 2))) {
       setRegError("Le numéro doit commencer par 01 (Moov), 05 (MTN) ou 07 (Orange).");
+      return;
+    }
+
+    // Règle stricte : 1 numéro = 1 seul compte
+    const localExists = agencies && agencies.some(a => (a.phone || '').replace(/[^0-9]/g, '').slice(-10) === phone10);
+    if (localExists) {
+      setRegError("Ce numéro de téléphone est déjà associé à un compte agence existant. Un numéro ne peut être lié qu'à un seul compte. Veuillez vous connecter.");
       return;
     }
 
@@ -982,7 +1046,7 @@ export default function LoginView({ initialTab = 'login', onBackToLanding }) {
             <button
               type="submit"
               className="btn"
-              disabled={!!successMsg}
+              disabled={!!successMsg || isSavingPassword}
               style={{
                 backgroundColor: 'var(--color-gold)',
                 color: 'var(--color-navy)',
@@ -997,11 +1061,12 @@ export default function LoginView({ initialTab = 'login', onBackToLanding }) {
                 gap: '8px',
                 boxShadow: '0 4px 14px rgba(212, 167, 44, 0.35)',
                 marginBottom: '10px',
-                cursor: successMsg ? 'default' : 'pointer',
-                border: 'none'
+                cursor: (successMsg || isSavingPassword) ? 'default' : 'pointer',
+                border: 'none',
+                opacity: isSavingPassword ? 0.7 : 1
               }}
             >
-              <span>Enregistrer et se connecter</span>
+              <span>{isSavingPassword ? "Enregistrement en cours..." : "Enregistrer et se connecter"}</span>
               <span>→</span>
             </button>
 
@@ -1027,27 +1092,6 @@ export default function LoginView({ initialTab = 'login', onBackToLanding }) {
             </button>
           </form>
         )}
-
-        {/* Raccourci discret Administrateur (Uniquement pour Cyrille) */}
-        <div style={{ marginTop: '22px', paddingTop: '16px', borderTop: '1px solid #F1F5F9', textAlign: 'center' }}>
-          <button
-            type="button"
-            onClick={() => {
-              setIdentifier(identifier === 'admin' ? '' : 'admin');
-              setError(null);
-            }}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: '#94A3B8',
-              fontSize: '11px',
-              cursor: 'pointer',
-              fontWeight: '600'
-            }}
-          >
-            {identifier === 'admin' ? "← Saisir un numéro de téléphone" : "👑 Accès rapide Cyrille"}
-          </button>
-        </div>
 
       </div>
     </div>

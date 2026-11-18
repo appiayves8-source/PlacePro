@@ -101,13 +101,29 @@ export function AppProvider({ children }) {
     }
   });
 
-  const updateAdminPassword = (newPwd) => {
+  // Synchronisation au démarrage avec le mot de passe maître stocké dans Supabase (table app_settings)
+  useEffect(() => {
+    let isMounted = true;
+    placeproService.getAdminPassword().then(pwd => {
+      if (isMounted && pwd) {
+        setAdminPassword(pwd);
+        try {
+          localStorage.setItem(ADMIN_PASSWORD_STORAGE_KEY, pwd);
+        } catch (e) {}
+      }
+    });
+    return () => { isMounted = false; };
+  }, []);
+
+  const updateAdminPassword = async (newPwd) => {
     setAdminPassword(newPwd);
     try {
       localStorage.setItem(ADMIN_PASSWORD_STORAGE_KEY, newPwd);
     } catch (e) {
       console.warn("Erreur sauvegarde mot de passe admin", e);
     }
+    const success = await placeproService.updateAdminPassword(newPwd);
+    return success;
   };
 
   // Mémorisation du dernier espace actif pour préremplissage automatique lors de la déconnexion
@@ -360,17 +376,49 @@ export function AppProvider({ children }) {
   // Création d'une agence enregistrée dans Supabase
   // Note importante : L'agence est logée dans la cage (le sélecteur) SANS écraser l'espace Admin actif
   const createAgency = async ({ name, managerName, phone, neighborhood, city = "Abidjan", plan = "Pro", monthlyFee = 39000 }) => {
-    const cleanId = 'AG_' + name.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8) + '_' + Math.floor(100 + Math.random() * 900);
-    const initials = name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || 'AG';
+    const cleanName = (name || '').trim();
+    if (cleanName.length < 3) {
+      throw new Error("Le nom de l'agence doit comporter au moins 3 caractères.");
+    }
+
+    const cleanManager = (managerName || '').trim();
+    if (cleanManager.length < 2) {
+      throw new Error("Veuillez renseigner le nom complet de la directrice ou gérante.");
+    }
+
+    const cleanPhoneDigits = (phone || '').replace(/[^0-9]/g, '');
+    const phone10 = cleanPhoneDigits.length >= 10 ? cleanPhoneDigits.slice(-10) : cleanPhoneDigits;
+    if (phone10.length !== 10) {
+      throw new Error("Le numéro WhatsApp doit comporter exactement 10 chiffres (norme Côte d'Ivoire).");
+    }
+
+    const validPrefixes = ['01', '05', '07'];
+    if (!validPrefixes.includes(phone10.slice(0, 2))) {
+      throw new Error("Le numéro doit commencer par 01 (Moov), 05 (MTN) ou 07 (Orange).");
+    }
+
+    // Règle stricte d'unicité : 1 numéro = 1 seul compte
+    const localExists = agencies.some(a => (a.phone || '').replace(/[^0-9]/g, '').slice(-10) === phone10);
+    if (localExists) {
+      throw new Error("Ce numéro de téléphone est déjà associé à un compte agence existant. Un numéro ne peut être lié qu'à un seul compte.");
+    }
+
+    const dbExists = await placeproService.checkAgencyPhoneExists(phone10);
+    if (dbExists) {
+      throw new Error("Ce numéro de téléphone est déjà associé à un compte agence existant. Un numéro ne peut être lié qu'à un seul compte.");
+    }
+
+    const cleanId = 'AG_' + cleanName.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8) + '_' + Math.floor(100 + Math.random() * 900);
+    const initials = cleanName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || 'AG';
 
     const expiryDate = new Date();
     expiryDate.setDate(expiryDate.getDate() + 7);
 
     const newAgency = {
       agency_id: cleanId,
-      name,
-      managerName,
-      phone,
+      name: cleanName,
+      managerName: cleanManager,
+      phone: phone10,
       neighborhood: neighborhood || '',
       city: `${city}, Côte d'Ivoire`,
       logoInitials: initials,
@@ -386,11 +434,11 @@ export function AppProvider({ children }) {
       createdAt: new Date().toISOString()
     };
 
+    // Sauvegarde immédiate dans Supabase avant d'ajouter localement
+    await placeproService.createAgency(newAgency);
+
     // Logée dans la cage d'espaces agences
     setAgencies(prev => [...prev, newAgency]);
-
-    // Sauvegarde immédiate dans Supabase
-    await placeproService.createAgency(newAgency);
 
     const baseAppUrl = getPublicAppUrl();
     const accessLink = `${baseAppUrl}/?agency=${cleanId}`;
@@ -403,6 +451,7 @@ export function AppProvider({ children }) {
   // ========================================================
   // INSCRIPTION SÉCURISÉE D'UNE NOUVELLE AGENCE (ONBOARDING CLIENTE)
   // - Validation stricte des données (Nom, Gérante, Téléphone CI 10 chiffres, Mot de passe)
+  // - Règle stricte d'unicité : 1 numéro = 1 seul compte
   // - 7 jours d'essai gratuit activés
   // - Connexion automatique et cloisonnement étanche
   // ========================================================
@@ -420,18 +469,24 @@ export function AppProvider({ children }) {
     const digitsPhone = (phone || '').replace(/[^0-9]/g, '');
     const cleanPhone = digitsPhone.length >= 10 ? digitsPhone.slice(-10) : digitsPhone;
     if (cleanPhone.length !== 10) {
-      throw new Error("Le numéro WhatsApp doit comporter exactement 10 chiffres.");
+      throw new Error("Le numéro WhatsApp doit comporter exactement 10 chiffres (norme Côte d'Ivoire).");
     }
 
     const validPrefixes = ['01', '05', '07'];
     const prefix = cleanPhone.slice(0, 2);
     if (!validPrefixes.includes(prefix)) {
-      throw new Error("Le numéro doit débuter par 01, 05 ou 07 (Moov, MTN ou Orange Côte d'Ivoire).");
+      throw new Error("Le numéro doit débuter par 01 (Moov), 05 (MTN) ou 07 (Orange Côte d'Ivoire).");
     }
 
+    // Règle stricte d'unicité : 1 numéro = 1 seul compte
     const phoneExists = agencies.some(a => (a.phone || '').replace(/[^0-9]/g, '').slice(-10) === cleanPhone);
     if (phoneExists) {
-      throw new Error("Une agence est déjà enregistrée avec ce numéro WhatsApp. Veuillez vous connecter.");
+      throw new Error("Ce numéro de téléphone est déjà associé à un compte agence existant. Un numéro ne peut être lié qu'à un seul compte. Veuillez vous connecter.");
+    }
+
+    const dbExists = await placeproService.checkAgencyPhoneExists(cleanPhone);
+    if (dbExists) {
+      throw new Error("Ce numéro de téléphone est déjà associé à un compte agence existant. Un numéro ne peut être lié qu'à un seul compte. Veuillez vous connecter.");
     }
 
     const cleanPassword = (password || '').trim();
@@ -493,11 +548,12 @@ export function AppProvider({ children }) {
   };
 
   // Mettre à jour le mot de passe secret d'une agence
-  const updateAgencyPassword = (agencyId, newPassword) => {
+  const updateAgencyPassword = async (agencyId, newPassword) => {
     setAgencies(prev => prev.map(a => 
       a.agency_id === agencyId ? { ...a, password: newPassword } : a
     ));
-    placeproService.updateAgencyPassword(agencyId, newPassword);
+    const success = await placeproService.updateAgencyPassword(agencyId, newPassword);
+    return success;
   };
 
   // Mettre à jour le forfait d'une agence (Starter, Pro, Annuel)
