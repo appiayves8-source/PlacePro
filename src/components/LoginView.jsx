@@ -1,5 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
+import { SUBSCRIPTION_PLANS } from '../data/mockData';
+
+const ABIDJAN_COMMUNES = [
+  'Cocody',
+  'Yopougon',
+  'Marcory',
+  'Plateau',
+  'Koumassi',
+  'Port-Bouët',
+  'Abobo',
+  'Treichville',
+  'Adjamé',
+  'Attécoubé',
+  'Bingerville',
+  'Songon',
+  'Autre commune'
+];
 
 export default function LoginView() {
   const { 
@@ -10,10 +27,16 @@ export default function LoginView() {
     updateAdminPassword,
     lastActiveSpace,
     currentAgencyId,
-    updateAgencyPassword
+    updateAgencyPassword,
+    registerAgency
   } = useApp();
 
-  // Détermination de l'espace actif : soit 'admin', soit l'agence mémorisée
+  // Mode principal : 'login' (Connexion) ou 'register' (Créer mon espace agence)
+  const [activeTab, setActiveTab] = useState('login');
+
+  // ========================================================
+  // ÉTATS DE CONNEXION (TAB 1)
+  // ========================================================
   const [selectedSpace, setSelectedSpace] = useState(() => {
     if (lastActiveSpace === 'admin') return 'admin';
     if (lastActiveSpace && agencies.some(a => a.agency_id === lastActiveSpace)) return lastActiveSpace;
@@ -38,7 +61,7 @@ export default function LoginView() {
     }
   }, [agencies, selectedSpace]);
 
-  // États pour le changement de mot de passe sécurisé
+  // Changement de mot de passe sécurisé
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -56,6 +79,23 @@ export default function LoginView() {
   const expectedCurrentPassword = isAdminSpace 
     ? (adminPassword || '0000') 
     : (selectedAgency?.password || '1234');
+
+  // ========================================================
+  // ÉTATS D'INSCRIPTION SÉCURISÉE (TAB 2)
+  // ========================================================
+  const [regData, setRegData] = useState({
+    name: '',
+    managerName: '',
+    phone: '',
+    neighborhood: 'Cocody',
+    city: 'Abidjan',
+    plan: 'pro',
+    password: '',
+    confirmPassword: ''
+  });
+  const [showRegPassword, setShowRegPassword] = useState(false);
+  const [regError, setRegError] = useState(null);
+  const [isSubmittingReg, setIsSubmittingReg] = useState(false);
 
   // Soumission de connexion standard
   const handleLoginSubmit = (e) => {
@@ -78,7 +118,6 @@ export default function LoginView() {
     }
 
     // 2. Connexion à un espace Agence
-    // Le code maître de Cyrille donne également accès Super Admin
     if (password.trim() === adminPassword || password.trim() === '0000' || password.trim() === 'admin') {
       loginAsSuperAdmin();
       return;
@@ -103,7 +142,6 @@ export default function LoginView() {
       return;
     }
 
-    // Vérification de l'ancien mot de passe
     if (oldPassword.trim() !== expectedCurrentPassword && oldPassword.trim() !== '0000') {
       setPasswordChangeError("L'ancien mot de passe saisi est incorrect.");
       return;
@@ -139,6 +177,66 @@ export default function LoginView() {
     }
   };
 
+  // Soumission de création d'agence sécurisée
+  const handleRegisterSubmit = async (e) => {
+    e.preventDefault();
+    setRegError(null);
+
+    // Validations locales
+    if (!regData.name.trim() || regData.name.trim().length < 3) {
+      setRegError("Veuillez entrer le nom officiel de votre agence (au moins 3 caractères).");
+      return;
+    }
+
+    if (!regData.managerName.trim() || regData.managerName.trim().length < 2) {
+      setRegError("Veuillez indiquer le nom complet de la directrice ou gérante.");
+      return;
+    }
+
+    const cleanPhone = regData.phone.replace(/[^0-9]/g, '');
+    const phone10 = cleanPhone.length >= 10 ? cleanPhone.slice(-10) : cleanPhone;
+    if (phone10.length !== 10) {
+      setRegError("Le numéro WhatsApp doit comporter exactement 10 chiffres (norme Côte d'Ivoire).");
+      return;
+    }
+
+    const validPrefixes = ['01', '05', '07'];
+    if (!validPrefixes.includes(phone10.slice(0, 2))) {
+      setRegError("Le numéro doit commencer par 01 (Moov), 05 (MTN) ou 07 (Orange).");
+      return;
+    }
+
+    if (!regData.password || regData.password.trim().length < 4) {
+      setRegError("Le mot de passe secret doit comporter au moins 4 caractères.");
+      return;
+    }
+
+    if (regData.password !== regData.confirmPassword) {
+      setRegError("Les deux mots de passe ne sont pas identiques.");
+      return;
+    }
+
+    const selectedPlanObj = SUBSCRIPTION_PLANS.find(p => p.id === regData.plan) || SUBSCRIPTION_PLANS[1];
+
+    setIsSubmittingReg(true);
+    try {
+      await registerAgency({
+        name: regData.name.trim(),
+        managerName: regData.managerName.trim(),
+        phone: phone10,
+        neighborhood: regData.neighborhood,
+        city: 'Abidjan',
+        password: regData.password.trim(),
+        plan: selectedPlanObj.name,
+        monthlyFee: selectedPlanObj.price
+      });
+      // La redirection est gérée directement dans registerAgency
+    } catch (err) {
+      setRegError(err.message || "Erreur lors de l'enregistrement de votre espace agence.");
+      setIsSubmittingReg(false);
+    }
+  };
+
   return (
     <div style={{
       minHeight: '100vh',
@@ -152,18 +250,19 @@ export default function LoginView() {
       <div style={{
         backgroundColor: '#FFFFFF',
         borderRadius: '24px',
-        maxWidth: '430px',
+        maxWidth: activeTab === 'register' ? '500px' : '440px',
         width: '100%',
-        padding: '36px 28px',
+        padding: '32px 28px',
         boxShadow: '0 20px 40px -10px rgba(14, 26, 58, 0.12)',
         border: '1.5px solid var(--color-border)',
-        position: 'relative'
+        position: 'relative',
+        transition: 'all 0.25s ease'
       }}>
-        {/* En-tête PlacePro Sobre */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '24px', textAlign: 'center' }}>
+        {/* En-tête PlacePro Sobre & Professionnel */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '20px', textAlign: 'center' }}>
           <div style={{
-            width: '56px',
-            height: '56px',
+            width: '54px',
+            height: '54px',
             background: 'linear-gradient(135deg, var(--color-gold) 0%, #B88E1F 100%)',
             borderRadius: '16px',
             display: 'flex',
@@ -173,37 +272,112 @@ export default function LoginView() {
             fontWeight: '900',
             fontSize: '26px',
             boxShadow: '0 8px 18px rgba(212, 167, 44, 0.3)',
-            marginBottom: '12px'
+            marginBottom: '10px'
           }}>
             P
           </div>
-          <h1 style={{ fontSize: '24px', fontWeight: '900', color: 'var(--color-navy)', margin: 0, letterSpacing: '-0.5px' }}>
+          <h1 style={{ fontSize: '23px', fontWeight: '900', color: 'var(--color-navy)', margin: 0, letterSpacing: '-0.5px' }}>
             PlacePro
           </h1>
-          <p style={{ fontSize: '13px', color: '#64748B', marginTop: '4px' }}>
-            Portail de gestion et suivi du personnel de maison
+          <p style={{ fontSize: '12.5px', color: '#64748B', marginTop: '3px' }}>
+            Portail de gestion certifié du personnel de maison en Côte d'Ivoire
           </p>
         </div>
 
         {/* ========================================================
-            MODE 1 : FORMULAIRE DE CONNEXION ÉPURÉ
+            ONGLETS PRINCIPAUX : CONNEXION VS CRÉER UN ESPACE
             ======================================================== */}
-        {!isChangingPassword ? (
+        {!isChangingPassword && (
+          <div style={{
+            display: 'flex',
+            backgroundColor: '#F1F5F9',
+            borderRadius: '12px',
+            padding: '4px',
+            marginBottom: '22px'
+          }}>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('login');
+                setError(null);
+                setRegError(null);
+              }}
+              style={{
+                flex: 1,
+                padding: '10px 12px',
+                borderRadius: '9px',
+                border: 'none',
+                backgroundColor: activeTab === 'login' ? '#FFFFFF' : 'transparent',
+                color: activeTab === 'login' ? 'var(--color-navy)' : '#64748B',
+                fontWeight: activeTab === 'login' ? '800' : '600',
+                fontSize: '12.5px',
+                cursor: 'pointer',
+                boxShadow: activeTab === 'login' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              🔐 Se connecter
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('register');
+                setError(null);
+                setRegError(null);
+              }}
+              style={{
+                flex: 1,
+                padding: '10px 12px',
+                borderRadius: '9px',
+                border: 'none',
+                backgroundColor: activeTab === 'register' ? '#FFFFFF' : 'transparent',
+                color: activeTab === 'register' ? 'var(--color-navy)' : '#64748B',
+                fontWeight: activeTab === 'register' ? '800' : '600',
+                fontSize: '12.5px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px',
+                boxShadow: activeTab === 'register' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              <span>🚀 Créer mon Espace</span>
+              <span style={{
+                backgroundColor: '#DCFCE7',
+                color: '#15803D',
+                fontSize: '9.5px',
+                fontWeight: '800',
+                padding: '1px 5px',
+                borderRadius: '9999px'
+              }}>
+                7j offerts
+              </span>
+            </button>
+          </div>
+        )}
+
+        {/* ========================================================
+            VUE 1 : FORMULAIRE DE CONNEXION ÉPURÉ
+            ======================================================== */}
+        {activeTab === 'login' && !isChangingPassword && (
           <form onSubmit={handleLoginSubmit}>
             {/* 1. Nom d'utilisateur / Nom de l'agence (PRÉREMPLI ET VERROUILLÉ) */}
-            <div style={{ marginBottom: '18px' }}>
+            <div style={{ marginBottom: '16px' }}>
               <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: 'var(--color-navy)', marginBottom: '6px' }}>
                 Nom d'utilisateur / Espace
               </label>
 
               <div style={{
                 width: '100%',
-                padding: '13px 14px',
+                padding: '12px 14px',
                 borderRadius: '12px',
                 border: '1.5px solid var(--color-border)',
                 backgroundColor: '#F8FAFC',
                 color: 'var(--color-navy)',
-                fontSize: '14px',
+                fontSize: '13.5px',
                 fontWeight: '800',
                 display: 'flex',
                 alignItems: 'center',
@@ -243,11 +417,11 @@ export default function LoginView() {
                 autoFocus
                 style={{
                   width: '100%',
-                  padding: '13px 14px',
+                  padding: '12px 14px',
                   borderRadius: '12px',
                   border: '1.5px solid var(--color-border)',
                   backgroundColor: '#FFFFFF',
-                  fontSize: '14px',
+                  fontSize: '13.5px',
                   color: 'var(--color-navy)',
                   outline: 'none',
                   boxSizing: 'border-box'
@@ -264,7 +438,7 @@ export default function LoginView() {
             </div>
 
             {/* 3. Changer de mot de passe */}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '20px', marginTop: '6px' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '18px', marginTop: '6px' }}>
               <button
                 type="button"
                 onClick={() => {
@@ -301,7 +475,7 @@ export default function LoginView() {
                 backgroundColor: 'var(--color-gold)',
                 color: 'var(--color-navy)',
                 width: '100%',
-                padding: '14px',
+                padding: '13px',
                 borderRadius: '12px',
                 fontSize: '14.5px',
                 fontWeight: '900',
@@ -318,10 +492,264 @@ export default function LoginView() {
               <span>→</span>
             </button>
           </form>
-        ) : (
-          /* ========================================================
-             MODE 2 : CHANGEMENT DE MOT DE PASSE SÉCURISÉ
-             ======================================================== */
+        )}
+
+        {/* ========================================================
+            VUE 2 : CRÉATION D'ESPACE AGENCE SÉCURISÉE (ONBOARDING)
+            ======================================================== */}
+        {activeTab === 'register' && !isChangingPassword && (
+          <form onSubmit={handleRegisterSubmit}>
+            {/* Bannière 7 jours d'essai */}
+            <div style={{
+              backgroundColor: '#FAF5EA',
+              border: '1.5px solid var(--color-gold-border)',
+              borderRadius: '12px',
+              padding: '10px 14px',
+              marginBottom: '16px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px'
+            }}>
+              <span style={{ fontSize: '20px' }}>🎁</span>
+              <div style={{ fontSize: '12px', color: 'var(--color-navy)', lineHeight: 1.4 }}>
+                <strong>7 jours d'essai complet 100% offerts</strong> sans engagement pour tester avec vos vrais candidats et familles.
+              </div>
+            </div>
+
+            {/* 1. Nom de l'agence */}
+            <div style={{ marginBottom: '12px' }}>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: 'var(--color-navy)', marginBottom: '5px' }}>
+                Nom officiel de l'agence de placement *
+              </label>
+              <input
+                type="text"
+                value={regData.name}
+                onChange={(e) => setRegData(prev => ({ ...prev, name: e.target.value }))}
+                placeholder="Entrez le nom de l'agence"
+                required
+                style={{
+                  width: '100%',
+                  padding: '11px 13px',
+                  borderRadius: '10px',
+                  border: '1.5px solid var(--color-border)',
+                  fontSize: '13px',
+                  outline: 'none',
+                  boxSizing: 'border-box'
+                }}
+              />
+            </div>
+
+            {/* 2. Nom de la directrice / gérante */}
+            <div style={{ marginBottom: '12px' }}>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: 'var(--color-navy)', marginBottom: '5px' }}>
+                Nom et prénom de la directrice / gérante *
+              </label>
+              <input
+                type="text"
+                value={regData.managerName}
+                onChange={(e) => setRegData(prev => ({ ...prev, managerName: e.target.value }))}
+                placeholder="Entrez le nom complet de la gérante"
+                required
+                style={{
+                  width: '100%',
+                  padding: '11px 13px',
+                  borderRadius: '10px',
+                  border: '1.5px solid var(--color-border)',
+                  fontSize: '13px',
+                  outline: 'none',
+                  boxSizing: 'border-box'
+                }}
+              />
+            </div>
+
+            {/* 3. Commune & Téléphone WhatsApp (2 colonnes) */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '12px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: 'var(--color-navy)', marginBottom: '5px' }}>
+                  Commune (Abidjan) *
+                </label>
+                <select
+                  value={regData.neighborhood}
+                  onChange={(e) => setRegData(prev => ({ ...prev, neighborhood: e.target.value }))}
+                  style={{
+                    width: '100%',
+                    padding: '11px 10px',
+                    borderRadius: '10px',
+                    border: '1.5px solid var(--color-border)',
+                    fontSize: '12.5px',
+                    backgroundColor: '#FFFFFF',
+                    outline: 'none',
+                    boxSizing: 'border-box'
+                  }}
+                >
+                  {ABIDJAN_COMMUNES.map(c => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: 'var(--color-navy)', marginBottom: '5px' }}>
+                  WhatsApp direct (10 ch.) *
+                </label>
+                <input
+                  type="tel"
+                  value={regData.phone}
+                  onChange={(e) => setRegData(prev => ({ ...prev, phone: e.target.value }))}
+                  placeholder="07 01 02 03 04"
+                  maxLength={14}
+                  required
+                  style={{
+                    width: '100%',
+                    padding: '11px 13px',
+                    borderRadius: '10px',
+                    border: '1.5px solid var(--color-border)',
+                    fontSize: '13px',
+                    outline: 'none',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* 4. Mots de passe */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '14px' }}>
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '5px' }}>
+                  <label style={{ fontSize: '12px', fontWeight: '700', color: 'var(--color-navy)' }}>
+                    Mot de passe *
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowRegPassword(!showRegPassword)}
+                    style={{ background: 'none', border: 'none', color: 'var(--color-gold)', fontSize: '10.5px', fontWeight: '700', cursor: 'pointer' }}
+                  >
+                    {showRegPassword ? 'Masquer' : 'Voir'}
+                  </button>
+                </div>
+                <input
+                  type={showRegPassword ? 'text' : 'password'}
+                  value={regData.password}
+                  onChange={(e) => setRegData(prev => ({ ...prev, password: e.target.value }))}
+                  placeholder="Au moins 4 car."
+                  required
+                  style={{
+                    width: '100%',
+                    padding: '11px 12px',
+                    borderRadius: '10px',
+                    border: '1.5px solid var(--color-border)',
+                    fontSize: '12.5px',
+                    outline: 'none',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: 'var(--color-navy)', marginBottom: '5px' }}>
+                  Confirmer *
+                </label>
+                <input
+                  type={showRegPassword ? 'text' : 'password'}
+                  value={regData.confirmPassword}
+                  onChange={(e) => setRegData(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                  placeholder="Répétez"
+                  required
+                  style={{
+                    width: '100%',
+                    padding: '11px 12px',
+                    borderRadius: '10px',
+                    border: '1.5px solid var(--color-border)',
+                    fontSize: '12.5px',
+                    outline: 'none',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* 5. Choix de formule avec tarif clair */}
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', fontSize: '11.5px', fontWeight: '700', color: '#64748B', marginBottom: '6px' }}>
+                Formule souhaitée (Facturée après vos 7 jours d'essai) :
+              </label>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
+                {SUBSCRIPTION_PLANS.map(plan => {
+                  const isSelected = regData.plan === plan.id;
+                  return (
+                    <div
+                      key={plan.id}
+                      onClick={() => setRegData(prev => ({ ...prev, plan: plan.id }))}
+                      style={{
+                        border: isSelected ? '2px solid var(--color-gold)' : '1px solid #E2E8F0',
+                        backgroundColor: isSelected ? '#FAF5EA' : '#FFFFFF',
+                        borderRadius: '9px',
+                        padding: '8px 4px',
+                        cursor: 'pointer',
+                        textAlign: 'center'
+                      }}
+                    >
+                      <div style={{ fontSize: '11.5px', fontWeight: '800', color: 'var(--color-navy)' }}>
+                        {plan.name}
+                      </div>
+                      <div style={{ fontSize: '11px', fontWeight: '700', color: 'var(--color-gold)', marginTop: '2px' }}>
+                        {plan.price.toLocaleString('fr-FR')} F
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {regError && (
+              <div style={{
+                marginBottom: '14px',
+                padding: '9px 12px',
+                backgroundColor: '#FEF2F2',
+                borderRadius: '8px',
+                border: '1px solid #FECACA',
+                color: '#B91C1C',
+                fontSize: '12px',
+                fontWeight: '600',
+                lineHeight: 1.4
+              }}>
+                ⚠️ {regError}
+              </div>
+            )}
+
+            {/* Bouton de validation */}
+            <button
+              type="submit"
+              className="btn"
+              disabled={isSubmittingReg}
+              style={{
+                backgroundColor: 'var(--color-gold)',
+                color: 'var(--color-navy)',
+                width: '100%',
+                padding: '13px',
+                borderRadius: '12px',
+                fontSize: '14px',
+                fontWeight: '900',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                boxShadow: '0 4px 14px rgba(212, 167, 44, 0.35)',
+                cursor: isSubmittingReg ? 'default' : 'pointer',
+                opacity: isSubmittingReg ? 0.7 : 1,
+                border: 'none'
+              }}
+            >
+              <span>{isSubmittingReg ? "Création en cours..." : "Créer mon espace & Démarrer l'essai gratuit"}</span>
+              <span>→</span>
+            </button>
+          </form>
+        )}
+
+        {/* ========================================================
+            VUE 3 : FORMULAIRE DE CHANGEMENT DE MOT DE PASSE SÉCURISÉ
+            ======================================================== */}
+        {isChangingPassword && (
           <form onSubmit={handlePasswordChangeSubmit}>
             <div style={{
               backgroundColor: '#EEF2FF',
@@ -501,7 +929,7 @@ export default function LoginView() {
           </form>
         )}
 
-        {/* Accès discret Administrateur (Uniquement si Cyrille doit basculer sur sa console) */}
+        {/* Accès discret Administrateur (Uniquement pour Cyrille) */}
         <div style={{ marginTop: '22px', paddingTop: '16px', borderTop: '1px solid #F1F5F9', textAlign: 'center' }}>
           <button
             type="button"
@@ -511,6 +939,7 @@ export default function LoginView() {
               } else {
                 setSelectedSpace('admin');
               }
+              setActiveTab('login');
               setError(null);
               setIsChangingPassword(false);
             }}
@@ -523,7 +952,7 @@ export default function LoginView() {
               fontWeight: '600'
             }}
           >
-            {isAdminSpace ? "← Revenir à l'espace Agence" : "👑 Accès Administrateur Plateforme"}
+            {isAdminSpace ? "← Revenir au mode Agence" : "👑 Accès Administrateur Plateforme"}
           </button>
         </div>
 

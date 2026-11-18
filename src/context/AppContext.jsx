@@ -375,6 +375,97 @@ export function AppProvider({ children }) {
     };
   };
 
+  // ========================================================
+  // INSCRIPTION SÉCURISÉE D'UNE NOUVELLE AGENCE (ONBOARDING CLIENTE)
+  // - Validation stricte des données (Nom, Gérante, Téléphone CI 10 chiffres, Mot de passe)
+  // - 7 jours d'essai gratuit activés
+  // - Connexion automatique et cloisonnement étanche
+  // ========================================================
+  const registerAgency = async ({ name, managerName, phone, neighborhood, city = "Abidjan", password, plan = "Pro", monthlyFee = 39000 }) => {
+    const cleanName = (name || '').trim();
+    if (cleanName.length < 3) {
+      throw new Error("Le nom de l'agence doit comporter au moins 3 caractères.");
+    }
+
+    const cleanManager = (managerName || '').trim();
+    if (cleanManager.length < 2) {
+      throw new Error("Veuillez renseigner le nom complet de la gérante ou directrice.");
+    }
+
+    const digitsPhone = (phone || '').replace(/[^0-9]/g, '');
+    const cleanPhone = digitsPhone.length >= 10 ? digitsPhone.slice(-10) : digitsPhone;
+    if (cleanPhone.length !== 10) {
+      throw new Error("Le numéro WhatsApp doit comporter exactement 10 chiffres.");
+    }
+
+    const validPrefixes = ['01', '05', '07'];
+    const prefix = cleanPhone.slice(0, 2);
+    if (!validPrefixes.includes(prefix)) {
+      throw new Error("Le numéro doit débuter par 01, 05 ou 07 (Moov, MTN ou Orange Côte d'Ivoire).");
+    }
+
+    const phoneExists = agencies.some(a => (a.phone || '').replace(/[^0-9]/g, '').slice(-10) === cleanPhone);
+    if (phoneExists) {
+      throw new Error("Une agence est déjà enregistrée avec ce numéro WhatsApp. Veuillez vous connecter.");
+    }
+
+    const cleanPassword = (password || '').trim();
+    if (cleanPassword.length < 4) {
+      throw new Error("Le mot de passe doit comporter au moins 4 caractères.");
+    }
+
+    const cleanSlug = cleanName.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8);
+    const uniqueId = `AG_${cleanSlug || 'PLACE'}_${Date.now().toString().slice(-4)}${Math.floor(10 + Math.random() * 90)}`;
+    const initials = cleanName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || 'AG';
+
+    const expiryDate = new Date();
+    expiryDate.setDate(expiryDate.getDate() + 7);
+
+    const newAgency = {
+      agency_id: uniqueId,
+      name: cleanName,
+      managerName: cleanManager,
+      phone: cleanPhone,
+      neighborhood: (neighborhood || 'Cocody').trim(),
+      city: `${city.trim()}, Côte d'Ivoire`,
+      logoInitials: initials,
+      currency: "FCFA",
+      plan: plan || 'Pro',
+      password: cleanPassword,
+      monthlyFee: Number(monthlyFee) || 39000,
+      subscriptionStatus: "trial",
+      subscriptionExpiry: expiryDate.toISOString().split('T')[0],
+      paymentMethod: "Wave Business",
+      lastPaymentDate: null,
+      totalPaidToAdmin: 0,
+      createdAt: new Date().toISOString()
+    };
+
+    // 1. Sauvegarde immédiate dans Supabase
+    await placeproService.createAgency(newAgency);
+
+    // 2. Mise à jour de la liste locale
+    setAgencies(prev => [...prev, newAgency]);
+
+    // 3. Connexion immédiate de la cliente à son espace agence (cloisonné)
+    setCurrentAgencyId(uniqueId);
+    setLastActiveSpace(uniqueId);
+    setIsSuperAdmin(false);
+    setIsLoggedIn(true);
+    setCurrentScreen('dashboard');
+    setNavigationHistory(['dashboard']);
+
+    try {
+      localStorage.setItem(LAST_SPACE_KEY, uniqueId);
+      localStorage.setItem('placepro_is_superadmin', 'false');
+    } catch (e) {}
+
+    const newUrl = `${window.location.origin}${window.location.pathname}?agency=${uniqueId}`;
+    window.history.pushState({ path: newUrl }, '', newUrl);
+
+    return newAgency;
+  };
+
   // Mettre à jour le mot de passe secret d'une agence
   const updateAgencyPassword = (agencyId, newPassword) => {
     setAgencies(prev => prev.map(a => 
@@ -909,9 +1000,11 @@ export function AppProvider({ children }) {
         agencies,
         currentAgencyId,
         isAdminSpace,
+        isSuperAdmin,
         switchAgency,
         switchToAdminSpace,
         createAgency,
+        registerAgency,
         updateAgencyPlan,
         updateAgencyPassword,
         // Super Admin Abonnements
@@ -960,7 +1053,6 @@ export function AppProvider({ children }) {
         activePaymentPlacement,
         // Modales & Navigation Mobile & Auth
         isLoggedIn,
-        isSuperAdmin,
         setIsSuperAdmin,
         adminPassword,
         updateAdminPassword,
