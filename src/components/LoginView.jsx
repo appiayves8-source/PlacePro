@@ -1023,19 +1023,13 @@ export default function LoginView({ initialTab = 'login', onBackToLanding }) {
           </form>
         )}
 
-        {/* Accès discret Administrateur (Uniquement pour Cyrille) */}
+        {/* Raccourci discret Administrateur (Uniquement pour Cyrille) */}
         <div style={{ marginTop: '22px', paddingTop: '16px', borderTop: '1px solid #F1F5F9', textAlign: 'center' }}>
           <button
             type="button"
             onClick={() => {
-              if (isAdminSpace) {
-                if (agencies.length > 0) setSelectedSpace(agencies[0].agency_id);
-              } else {
-                setSelectedSpace('admin');
-              }
-              setActiveTab('login');
+              setIdentifier(identifier === 'admin' ? '' : 'admin');
               setError(null);
-              setIsChangingPassword(false);
             }}
             style={{
               background: 'none',
@@ -1046,7 +1040,7 @@ export default function LoginView({ initialTab = 'login', onBackToLanding }) {
               fontWeight: '600'
             }}
           >
-            {isAdminSpace ? "← Revenir au mode Agence" : "👑 Accès Administrateur Plateforme"}
+            {identifier === 'admin' ? "← Saisir un numéro de téléphone" : "👑 Accès rapide Cyrille"}
           </button>
         </div>
 
