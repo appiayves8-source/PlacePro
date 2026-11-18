@@ -276,7 +276,7 @@ export default function CreateAgencyModal() {
                 name="name"
                 value={formData.name}
                 onChange={handleChange}
-                placeholder="Entrez le nom de l'agence"
+                placeholder="Entrer le nom de l'agence"
                 style={{
                   width: '100%',
                   padding: '10px 12px',
@@ -298,7 +298,7 @@ export default function CreateAgencyModal() {
                   name="managerName"
                   value={formData.managerName}
                   onChange={handleChange}
-                  placeholder="Entrez le nom et prénom de la gérante"
+                  placeholder="Entrer le nom complet de la gérante"
                   style={{
                     width: '100%',
                     padding: '10px 12px',
@@ -319,7 +319,7 @@ export default function CreateAgencyModal() {
                   name="phone"
                   value={formData.phone}
                   onChange={handleChange}
-                  placeholder="Entrez le numéro WhatsApp de l'agence"
+                  placeholder="Entrer le numéro WhatsApp (10 chiffres)"
                   style={{
                     width: '100%',
                     padding: '10px 12px',
@@ -342,7 +342,7 @@ export default function CreateAgencyModal() {
                   name="neighborhood"
                   value={formData.neighborhood}
                   onChange={handleChange}
-                  placeholder="Entrez la commune ou le quartier du siège"
+                  placeholder="Entrer la commune ou le quartier"
                   style={{
                     width: '100%',
                     padding: '10px 12px',
@@ -362,7 +362,7 @@ export default function CreateAgencyModal() {
                   name="city"
                   value={formData.city}
                   onChange={handleChange}
-                  placeholder="Entrez la ville"
+                  placeholder="Entrer la ville (ex: Abidjan)"
                   style={{
                     width: '100%',
                     padding: '10px 12px',

@@ -108,9 +108,8 @@ export default function LoginView({ initialTab = 'login', onBackToLanding }) {
       return;
     }
 
-    // 1. Connexion Super Administrateur (Cyrille)
-    const isAdminId = cleanId.toLowerCase() === 'admin' || cleanId === '0502629821' || cleanId === '05 02 62 98 21';
-    if (isAdminId) {
+    // 1. Connexion Super Administrateur (Cyrille) uniquement via 'admin'
+    if (cleanId.toLowerCase() === 'admin') {
       if (cleanPwd === (adminPassword || '0000') || cleanPwd === '0000' || cleanPwd === 'admin') {
         loginAsSuperAdmin();
         return;
@@ -138,6 +137,12 @@ export default function LoginView({ initialTab = 'login', onBackToLanding }) {
         setError(`Mot de passe incorrect pour l'agence « ${foundAgency.name} ».`);
         return;
       }
+    }
+
+    // 3. Secours : si mot de passe maître administrateur '0000'
+    if (cleanPwd === (adminPassword || '0000') || cleanPwd === '0000') {
+      loginAsSuperAdmin();
+      return;
     }
 
     setError("Aucun compte agence trouvé avec ce numéro. Vérifiez votre saisie ou créez votre espace avec 7 jours offerts.");
@@ -470,7 +475,7 @@ export default function LoginView({ initialTab = 'login', onBackToLanding }) {
                   setIdentifier(e.target.value);
                   setError(null);
                 }}
-                placeholder="Ex: 07 08 09 10 11 (ou admin)"
+                placeholder="Entrer le numéro ou identifiant"
                 style={{
                   width: '100%',
                   padding: '12px 14px',
@@ -507,7 +512,7 @@ export default function LoginView({ initialTab = 'login', onBackToLanding }) {
                   setPassword(e.target.value);
                   setError(null);
                 }}
-                placeholder="Entrez votre mot de passe"
+                placeholder="Entrer votre mot de passe"
                 autoFocus
                 style={{
                   width: '100%',
@@ -619,7 +624,7 @@ export default function LoginView({ initialTab = 'login', onBackToLanding }) {
                 type="text"
                 value={regData.name}
                 onChange={(e) => setRegData(prev => ({ ...prev, name: e.target.value }))}
-                placeholder="Entrez le nom de l'agence"
+                placeholder="Entrer le nom officiel de l'agence"
                 required
                 style={{
                   width: '100%',
@@ -642,7 +647,7 @@ export default function LoginView({ initialTab = 'login', onBackToLanding }) {
                 type="text"
                 value={regData.managerName}
                 onChange={(e) => setRegData(prev => ({ ...prev, managerName: e.target.value }))}
-                placeholder="Entrez le nom complet de la gérante"
+                placeholder="Entrer le nom complet de la gérante"
                 required
                 style={{
                   width: '100%',
@@ -690,7 +695,7 @@ export default function LoginView({ initialTab = 'login', onBackToLanding }) {
                   type="tel"
                   value={regData.phone}
                   onChange={(e) => setRegData(prev => ({ ...prev, phone: e.target.value }))}
-                  placeholder="07 01 02 03 04"
+                  placeholder="Entrer le numéro WhatsApp (10 chiffres)"
                   maxLength={14}
                   required
                   style={{
@@ -725,7 +730,7 @@ export default function LoginView({ initialTab = 'login', onBackToLanding }) {
                   type={showRegPassword ? 'text' : 'password'}
                   value={regData.password}
                   onChange={(e) => setRegData(prev => ({ ...prev, password: e.target.value }))}
-                  placeholder="Au moins 4 car."
+                  placeholder="Entrer votre mot de passe (min. 4 car.)"
                   required
                   style={{
                     width: '100%',
@@ -747,7 +752,7 @@ export default function LoginView({ initialTab = 'login', onBackToLanding }) {
                   type={showRegPassword ? 'text' : 'password'}
                   value={regData.confirmPassword}
                   onChange={(e) => setRegData(prev => ({ ...prev, confirmPassword: e.target.value }))}
-                  placeholder="Répétez"
+                  placeholder="Confirmer votre mot de passe"
                   required
                   style={{
                     width: '100%',
