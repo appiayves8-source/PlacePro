@@ -30,7 +30,8 @@ export default function Dashboard() {
     setIsNewPlacementOpen,
     setIsRecordPaymentOpen,
     openPaymentForPlacement,
-    renewPlacement
+    renewPlacement,
+    switchToAdminSpace
   } = useApp();
 
   // Notes de l'agence (vides au départ, ajoutées par la gérante)
@@ -63,6 +64,51 @@ export default function Dashboard() {
 
   return (
     <div className="dashboard-wrapper">
+      {/* Bandeau d'inspection si l'admin inspecte une agence spécifique */}
+      {agency.agency_id !== 'admin' && (
+        <div style={{
+          backgroundColor: '#EFF6FF',
+          border: '1.5px solid #3B82F6',
+          borderRadius: '16px',
+          padding: '12px 18px',
+          marginBottom: '16px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '12px',
+          boxShadow: '0 2px 8px rgba(59, 130, 246, 0.12)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{ fontSize: '22px' }}>👀</span>
+            <div>
+              <div style={{ color: '#1E3A8A', fontSize: '13.5px', fontWeight: '800' }}>
+                Mode Inspection : Espace Agence « {agency.name} » ({agency.neighborhood || agency.city})
+              </div>
+              <div style={{ color: '#2563EB', fontSize: '11.5px', marginTop: '1px' }}>
+                Vous visualisez l'espace privé de cette agence. Vous pouvez y gérer ses données ou revenir sur votre page Admin.
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={switchToAdminSpace}
+            className="btn"
+            style={{
+              backgroundColor: 'var(--color-navy)',
+              color: 'var(--color-gold)',
+              border: '1.5px solid var(--color-gold)',
+              padding: '8px 16px',
+              borderRadius: '10px',
+              fontSize: '12.5px',
+              fontWeight: '800',
+              cursor: 'pointer'
+            }}
+          >
+            ← Revenir à mon Espace Admin
+          </button>
+        </div>
+      )}
+
       {/* ========================================================
           1. HERO BANNER : BLEU NUIT (#0E1A3A) ET OR (#D4A72C)
           ======================================================== */}
@@ -70,15 +116,17 @@ export default function Dashboard() {
         <div className="hero-header">
           <div>
             <div className="hero-date-badge">
-              <span>Mardi 17 Novembre 2026</span>
+              <span>{agency.agency_id === 'admin' ? '👑 Espace Administrateur Plateforme' : '🏢 Espace Agence Partenaire'}</span>
               <span>•</span>
               <span>Abidjan, Côte d'Ivoire</span>
             </div>
             <h1 className="hero-title">
-              Bonjour ! {agency.name},
+              {agency.agency_id === 'admin' ? "Bonjour Cyrille (Super Administrateur)," : `Bonjour ! ${agency.name},`}
             </h1>
             <p className="hero-subtitle">
-              Suivi en temps réel de votre personnel placé et de vos encaissements
+              {agency.agency_id === 'admin' 
+                ? "Supervision générale de la plateforme PlacePro et de l'ensemble des agences" 
+                : "Suivi en temps réel de votre personnel placé et de vos encaissements"}
             </p>
           </div>
 

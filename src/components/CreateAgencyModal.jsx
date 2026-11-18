@@ -161,11 +161,11 @@ export default function CreateAgencyModal() {
               alignItems: 'center',
               gap: '12px'
             }}>
-              <div style={{ fontSize: '22px' }}>✓</div>
+              <div style={{ fontSize: '24px' }}>✓</div>
               <div>
-                <strong style={{ fontSize: '14px' }}>Espace créé avec succès !</strong>
-                <p style={{ fontSize: '12px', margin: '2px 0 0 0' }}>
-                  Agence : {createdResult.agency.name} (ID : {createdResult.agency.agency_id})
+                <strong style={{ fontSize: '14px' }}>Espace créé et logé dans la cage d'agences !</strong>
+                <p style={{ fontSize: '12px', margin: '3px 0 0 0', lineHeight: 1.4 }}>
+                  L'espace pour <strong>{createdResult.agency.name}</strong> a été synchronisé dans Supabase et ajouté dans votre case d'espaces en haut. Votre page Admin reste active.
                 </p>
               </div>
             </div>
@@ -226,28 +226,40 @@ export default function CreateAgencyModal() {
                   backgroundColor: '#25D366',
                   color: '#FFFFFF',
                   width: '100%',
-                  textDecoration: 'none'
+                  textDecoration: 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  fontWeight: '800'
                 }}
               >
-                Envoyer le lien sur WhatsApp ({createdResult.agency.phone})
+                <span>💬</span>
+                <span>Envoyer le lien sur WhatsApp ({createdResult.agency.phone})</span>
               </a>
 
               <button
                 type="button"
-                onClick={handleSwitchToNewAgency}
-                className="btn btn-navy"
-                style={{ width: '100%' }}
+                onClick={handleClose}
+                className="btn"
+                style={{
+                  width: '100%',
+                  backgroundColor: 'var(--color-navy)',
+                  color: 'var(--color-gold)',
+                  border: '1px solid var(--color-gold)',
+                  fontWeight: '800'
+                }}
               >
-                Ouvrir cet espace agence maintenant
+                ✓ Rester sur ma page Admin (Fermer)
               </button>
 
               <button
                 type="button"
-                onClick={handleClose}
+                onClick={handleSwitchToNewAgency}
                 className="btn btn-outline"
-                style={{ width: '100%' }}
+                style={{ width: '100%', fontSize: '12px' }}
               >
-                Fermer
+                👁️ Inspecter cet espace agence
               </button>
             </div>
           </div>

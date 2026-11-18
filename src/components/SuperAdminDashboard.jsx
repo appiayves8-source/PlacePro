@@ -143,7 +143,7 @@ export default function SuperAdminDashboard() {
                 borderRadius: '12px'
               }}
             >
-              ← Retour Vue Agence
+              ← Retour au Dashboard
             </button>
           </div>
         </div>

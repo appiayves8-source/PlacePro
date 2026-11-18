@@ -9,21 +9,23 @@ const AGENCIES_STORAGE_KEY = 'placepro_agencies_v1';
 const NOTIFICATIONS_STORAGE_KEY = 'placepro_notifications_v1';
 const ADMIN_PAYMENTS_STORAGE_KEY = 'placepro_admin_payments_v1';
 
-const DEFAULT_AGENCY = {
-  agency_id: '',
-  name: 'Mon Espace Agence',
-  managerName: '',
-  phone: '',
-  neighborhood: 'Abidjan',
+export const ADMIN_SPACE = {
+  agency_id: 'admin',
+  name: 'Administration PlacePro (Cyrille)',
+  managerName: 'Cyrille',
+  phone: '0502629821',
+  neighborhood: 'Plateau',
   city: "Abidjan, Côte d'Ivoire",
-  logoInitials: 'PP',
+  logoInitials: '👑',
   currency: 'FCFA',
-  plan: 'Pro',
-  password: '1234',
-  monthlyFee: 39000,
+  plan: 'Super Admin',
+  password: '0000',
+  monthlyFee: 0,
   subscriptionStatus: 'active',
   totalPaidToAdmin: 0
 };
+
+const DEFAULT_AGENCY = ADMIN_SPACE;
 
 export function AppProvider({ children }) {
   // Liste des agences (stockées dans Supabase et mises en cache)
@@ -64,7 +66,9 @@ export function AppProvider({ children }) {
   const cliParam = params.get('cli');
   const adminParam = params.get('admin');
 
-  const [currentAgencyId, setCurrentAgencyId] = useState(agencyParam || null);
+  const [currentAgencyId, setCurrentAgencyId] = useState(() => {
+    return agencyParam || 'admin';
+  });
   const [portalView, setPortalView] = useState(viewParam); // 'worker' | 'family' | null
   const [portalEntityId, setPortalEntityId] = useState(candParam || cliParam || null);
 
@@ -196,9 +200,9 @@ export function AppProvider({ children }) {
           payments: dbPayments || []
         });
 
-        // Si aucune agence active n'est définie, sélectionner la première agence existante
-        if (!currentAgencyId && dbAgencies && dbAgencies.length > 0) {
-          setCurrentAgencyId(dbAgencies[0].agency_id);
+        // Par défaut, l'espace actif est l'espace Administrateur de Cyrille
+        if (!currentAgencyId) {
+          setCurrentAgencyId('admin');
         }
       } catch (err) {
         console.error("[PlacePro] Erreur synchronisation Supabase:", err);
@@ -209,7 +213,9 @@ export function AppProvider({ children }) {
     return () => { isMounted = false; };
   }, []);
 
-  const currentAgency = agencies.find(a => a.agency_id === currentAgencyId) || agencies[0] || DEFAULT_AGENCY;
+  const currentAgency = (currentAgencyId === 'admin' || !currentAgencyId)
+    ? ADMIN_SPACE
+    : (agencies.find(a => a.agency_id === currentAgencyId) || ADMIN_SPACE);
 
   // Navigation
   const [currentScreen, setCurrentScreen] = useState(() => {
@@ -294,7 +300,26 @@ export function AppProvider({ children }) {
     setIsPaymentModalOpen(true);
   };
 
+  const switchToAdminSpace = () => {
+    setCurrentAgencyId('admin');
+    setLastActiveSpace('admin');
+    setIsSuperAdmin(true);
+    try {
+      localStorage.setItem(LAST_SPACE_KEY, 'admin');
+      localStorage.setItem('placepro_is_superadmin', 'true');
+    } catch (e) {}
+    setPortalView(null);
+    const newUrl = `${window.location.origin}${window.location.pathname}?agency=admin`;
+    window.history.pushState({ path: newUrl }, '', newUrl);
+    setCurrentScreen('dashboard');
+    setNavigationHistory(['dashboard']);
+  };
+
   const switchAgency = (agencyId) => {
+    if (agencyId === 'admin') {
+      switchToAdminSpace();
+      return;
+    }
     setCurrentAgencyId(agencyId);
     setLastActiveSpace(agencyId);
     try {
@@ -308,6 +333,7 @@ export function AppProvider({ children }) {
   };
 
   // Création d'une agence enregistrée dans Supabase
+  // Note importante : L'agence est logée dans la cage (le sélecteur) SANS écraser l'espace Admin actif
   const createAgency = async ({ name, managerName, phone, neighborhood, city = "Abidjan", plan = "Pro", monthlyFee = 39000 }) => {
     const cleanId = 'AG_' + name.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8) + '_' + Math.floor(100 + Math.random() * 900);
     const initials = name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || 'AG';
@@ -335,8 +361,8 @@ export function AppProvider({ children }) {
       createdAt: new Date().toISOString()
     };
 
+    // Logée dans la cage d'espaces agences
     setAgencies(prev => [...prev, newAgency]);
-    setCurrentAgencyId(cleanId);
 
     // Sauvegarde immédiate dans Supabase
     await placeproService.createAgency(newAgency);
@@ -476,12 +502,15 @@ export function AppProvider({ children }) {
 
   // ========================================================
   // CLOISONNEMENT STRICT PAR AGENCE ACTIVE (MULTI-TENANT)
+  // - Si on est sur l'Espace Admin de Cyrille : vue d'ensemble globale de la plateforme
+  // - Si on inspecte une agence spécifique : vue strictement cloisonnée sur cette agence
   // ========================================================
-  const currentCandidates = state.candidates.filter(c => c.agency_id === currentAgency.agency_id);
-  const currentClients = state.clients.filter(cl => cl.agency_id === currentAgency.agency_id);
-  const currentPlacements = state.placements.filter(p => p.agency_id === currentAgency.agency_id);
-  const currentPayments = state.payments.filter(pay => pay.agency_id === currentAgency.agency_id);
-  const currentNotifications = notifications.filter(n => n.agency_id === currentAgency.agency_id);
+  const isAdminSpace = currentAgency.agency_id === 'admin';
+  const currentCandidates = isAdminSpace ? state.candidates : state.candidates.filter(c => c.agency_id === currentAgency.agency_id);
+  const currentClients = isAdminSpace ? state.clients : state.clients.filter(cl => cl.agency_id === currentAgency.agency_id);
+  const currentPlacements = isAdminSpace ? state.placements : state.placements.filter(p => p.agency_id === currentAgency.agency_id);
+  const currentPayments = isAdminSpace ? state.payments : state.payments.filter(pay => pay.agency_id === currentAgency.agency_id);
+  const currentNotifications = isAdminSpace ? notifications : notifications.filter(n => n.agency_id === currentAgency.agency_id);
 
   // Compteur notifications non lues
   const unreadNotificationCount = currentNotifications.filter(n => !n.read).length;
@@ -879,7 +908,9 @@ export function AppProvider({ children }) {
         agency: currentAgency,
         agencies,
         currentAgencyId,
+        isAdminSpace,
         switchAgency,
+        switchToAdminSpace,
         createAgency,
         updateAgencyPlan,
         updateAgencyPassword,

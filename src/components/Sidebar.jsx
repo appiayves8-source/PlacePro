@@ -153,9 +153,9 @@ function MenuNavList({ isMobile = false, onOpenLogoutConfirm }) {
             {agency.logoInitials}
           </div>
           <div className="sidebar-profile-info">
-            <span className="sidebar-profile-name">{agency.name}</span>
+            <span className="sidebar-profile-name">{agency.agency_id === 'admin' ? "Cyrille" : agency.name}</span>
             <span className="sidebar-profile-sub">
-              {agency.managerName || 'Espace Connecté'} • Déconnexion
+              {agency.agency_id === 'admin' ? "👑 Super Administrateur" : (agency.managerName || 'Espace Connecté')} • Déconnexion
             </span>
           </div>
           <div className="sidebar-profile-logout-icon">
@@ -217,7 +217,7 @@ export default function Sidebar() {
               PlacePro
             </span>
             <span style={{ fontSize: '10.5px', fontWeight: '700', color: 'var(--color-gold)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-              {agency.name}
+              {agency.agency_id === 'admin' ? "👑 Administration PlacePro" : agency.name}
             </span>
           </div>
         </div>
@@ -263,7 +263,7 @@ export default function Sidebar() {
                     PlacePro
                   </span>
                   <span style={{ fontSize: '10.5px', fontWeight: '700', color: 'var(--color-gold)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                    {agency.name}
+                    {agency.agency_id === 'admin' ? "👑 Administration PlacePro" : agency.name}
                   </span>
                 </div>
               </div>
