@@ -39,6 +39,14 @@ function AppContent() {
   // Mode d'authentification demandé depuis la landing page ('login' ou 'register')
   const [authMode, setAuthMode] = useState(() => {
     try {
+      // Détecter si on est en mode PWA / Application installée (standalone)
+      const isStandalone = (typeof window !== 'undefined') && (
+        window.matchMedia('(display-mode: standalone)').matches ||
+        window.navigator.standalone === true ||
+        document.referrer.includes('android-app://')
+      );
+      if (isStandalone) return 'login';
+
       const p = new URLSearchParams(window.location.search);
       if (p.get('login') === 'true' || p.get('admin') === 'true' || p.get('auth') === 'login') return 'login';
       if (p.get('register') === 'true' || p.get('trial') === 'true' || p.get('auth') === 'register') return 'register';

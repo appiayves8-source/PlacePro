@@ -2,7 +2,7 @@
   "name": "PlacePro - Suivi Agence",
   "short_name": "PlacePro",
   "description": "Application de suivi du personnel après placement pour les agences en Côte d'Ivoire",
-  "start_url": "/",
+  "start_url": "/?auth=login",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#F4F6FA",

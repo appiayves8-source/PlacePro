@@ -68,24 +68,31 @@ export function AppProvider({ children }) {
   const adminParam = params.get('admin');
 
   const [currentAgencyId, setCurrentAgencyId] = useState(() => {
-    return agencyParam || 'admin';
+    if (agencyParam && agencyParam !== 'admin') return agencyParam;
+    try {
+      const isLoggedInSaved = localStorage.getItem('placepro_logged_in') === 'true';
+      const savedAdmin = localStorage.getItem('placepro_is_superadmin') === 'true';
+      if (isLoggedInSaved && savedAdmin) return 'admin';
+      const savedSpace = localStorage.getItem(LAST_SPACE_KEY);
+      if (isLoggedInSaved && savedSpace && savedSpace !== 'admin') return savedSpace;
+    } catch (e) {}
+    return null;
   });
   const [portalView, setPortalView] = useState(viewParam); // 'worker' | 'family' | null
   const [portalEntityId, setPortalEntityId] = useState(candParam || cliParam || null);
 
-  // État Super Admin (Cyrille - Propriétaire de la plateforme)
+  // État Super Admin (Cyrille - Propriétaire de la plateforme) : STRICTEMENT FALSE par défaut
   const [isSuperAdmin, setIsSuperAdmin] = useState(() => {
     try {
-      // Si un paramètre d'agence spécifique (autre que admin) est dans l'URL, ce n'est pas le Super Admin
       if (agencyParam && agencyParam !== 'admin') {
         return false;
       }
-      const saved = localStorage.getItem('placepro_is_superadmin');
-      if (saved !== null) return saved === 'true';
-      // Par défaut sur le lien principal Vercel, c'est l'espace Admin de Cyrille
-      return true;
+      const isLoggedInSaved = localStorage.getItem('placepro_logged_in') === 'true';
+      const savedAdmin = localStorage.getItem('placepro_is_superadmin') === 'true';
+      // L'utilisateur n'est Super Admin que s'il est expressément connecté ET authentifié
+      return isLoggedInSaved && savedAdmin;
     } catch (e) {
-      return true;
+      return false;
     }
   });
 
@@ -129,9 +136,9 @@ export function AppProvider({ children }) {
   // Mémorisation du dernier espace actif pour préremplissage automatique lors de la déconnexion
   const [lastActiveSpace, setLastActiveSpace] = useState(() => {
     try {
-      return localStorage.getItem(LAST_SPACE_KEY) || (adminParam === 'true' ? 'admin' : (agencyParam || 'admin'));
+      return localStorage.getItem(LAST_SPACE_KEY) || (adminParam === 'true' ? 'admin' : (agencyParam || ''));
     } catch (e) {
-      return 'admin';
+      return '';
     }
   });
 
@@ -237,12 +244,18 @@ export function AppProvider({ children }) {
     return () => { isMounted = false; };
   }, []);
 
-  const currentAgency = (currentAgencyId === 'admin' || !currentAgencyId)
+  const currentAgency = (currentAgencyId === 'admin')
     ? ADMIN_SPACE
-    : (agencies.find(a => a.agency_id === currentAgencyId) || ADMIN_SPACE);
+    : (agencies.find(a => a.agency_id === currentAgencyId) || (isSuperAdmin ? ADMIN_SPACE : (agencies[0] || ADMIN_SPACE)));
 
   // Navigation
   const [currentScreen, setCurrentScreen] = useState(() => {
+    try {
+      const isLoggedInSaved = localStorage.getItem('placepro_logged_in') === 'true';
+      const savedAdmin = localStorage.getItem('placepro_is_superadmin') === 'true';
+      if (isLoggedInSaved && savedAdmin) return 'super-admin';
+      if (!isLoggedInSaved) return 'login';
+    } catch (e) {}
     return adminParam === 'true' ? 'super-admin' : 'dashboard';
   });
   const [navigationHistory, setNavigationHistory] = useState(['dashboard']);
@@ -262,12 +275,14 @@ export function AppProvider({ children }) {
   });
 
   const logout = () => {
-    const activeSpaceToRemember = (currentScreen === 'super-admin' || isSuperAdmin) ? 'admin' : (currentAgencyId || 'admin');
+    const activeSpaceToRemember = (currentScreen === 'super-admin' || isSuperAdmin) ? 'admin' : (currentAgencyId || '');
     setLastActiveSpace(activeSpaceToRemember);
     try {
       localStorage.setItem(LAST_SPACE_KEY, activeSpaceToRemember);
       localStorage.setItem('placepro_logged_in', 'false');
+      localStorage.setItem('placepro_is_superadmin', 'false');
     } catch (e) {}
+    setIsSuperAdmin(false);
     setIsLoggedIn(false);
     setIsMobileMenuOpen(false);
     setCurrentScreen('login');
