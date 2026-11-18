@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
 import Sidebar from './components/Sidebar';
 import TopBar from './components/TopBar';
@@ -22,10 +22,12 @@ import AgencyLockScreen from './components/AgencyLockScreen';
 import SubscriptionView from './components/SubscriptionView';
 import LoginView from './components/LoginView';
 import PaymentModal from './components/PaymentModal';
+import LandingPage from './components/LandingPage';
 
 function AppContent() {
   const {
     currentScreen,
+    navigateTo,
     goBack,
     setIsAddCandidateOpen,
     portalView,
@@ -34,15 +36,15 @@ function AppContent() {
     isLoggedIn
   } = useApp();
 
-  // Si l'utilisateur s'est déconnecté de son espace
-  if (!isLoggedIn || currentScreen === 'login') {
-    return (
-      <>
-        <LoginView />
-        <CreateAgencyModal />
-      </>
-    );
-  }
+  // Mode d'authentification demandé depuis la landing page ('login' ou 'register')
+  const [authMode, setAuthMode] = useState(() => {
+    try {
+      const p = new URLSearchParams(window.location.search);
+      if (p.get('login') === 'true' || p.get('admin') === 'true' || p.get('auth') === 'login') return 'login';
+      if (p.get('register') === 'true' || p.get('trial') === 'true' || p.get('auth') === 'register') return 'register';
+    } catch (e) {}
+    return null;
+  });
 
   // Si on ouvre l'application via un lien portail direct (Employé ou Famille)
   if (portalView === 'worker') {
@@ -51,6 +53,32 @@ function AppContent() {
 
   if (portalView === 'family') {
     return <FamilyPortal clientId={portalEntityId} />;
+  }
+
+  // Si l'utilisateur n'est pas connecté à un espace de travail
+  if (!isLoggedIn) {
+    if (authMode || currentScreen === 'login') {
+      return (
+        <>
+          <LoginView 
+            initialTab={authMode || 'login'} 
+            onBackToLanding={() => {
+              setAuthMode(null);
+              if (currentScreen === 'login') {
+                navigateTo('dashboard');
+              }
+            }} 
+          />
+          <CreateAgencyModal />
+        </>
+      );
+    }
+
+    return (
+      <LandingPage 
+        onNavigateToAuth={(mode) => setAuthMode(mode)} 
+      />
+    );
   }
 
   // Si l'abonnement de l'agence active est expiré ou suspendu (Paywall actif)

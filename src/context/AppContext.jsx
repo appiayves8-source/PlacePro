@@ -234,13 +234,22 @@ export function AppProvider({ children }) {
 
   // Modales & Tiroir Mobile
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(true);
+  const [isLoggedIn, setIsLoggedIn] = useState(() => {
+    try {
+      if (viewParam) return true;
+      const saved = localStorage.getItem('placepro_logged_in');
+      return saved === 'true';
+    } catch (e) {
+      return false;
+    }
+  });
 
   const logout = () => {
     const activeSpaceToRemember = (currentScreen === 'super-admin' || isSuperAdmin) ? 'admin' : (currentAgencyId || 'admin');
     setLastActiveSpace(activeSpaceToRemember);
     try {
       localStorage.setItem(LAST_SPACE_KEY, activeSpaceToRemember);
+      localStorage.setItem('placepro_logged_in', 'false');
     } catch (e) {}
     setIsLoggedIn(false);
     setIsMobileMenuOpen(false);
@@ -257,6 +266,9 @@ export function AppProvider({ children }) {
       const newUrl = `${window.location.origin}${window.location.pathname}?agency=${agencyId}`;
       window.history.pushState({ path: newUrl }, '', newUrl);
     }
+    try {
+      localStorage.setItem('placepro_logged_in', 'true');
+    } catch (e) {}
     setIsLoggedIn(true);
     setCurrentScreen('dashboard');
     setNavigationHistory(['dashboard']);
@@ -264,12 +276,13 @@ export function AppProvider({ children }) {
 
   // Connexion directe en tant que Super Administrateur de la plateforme (Cyrille)
   const loginAsSuperAdmin = () => {
+    try {
+      localStorage.setItem('placepro_logged_in', 'true');
+      localStorage.setItem(LAST_SPACE_KEY, 'admin');
+    } catch (e) {}
     setIsLoggedIn(true);
     setIsSuperAdmin(true);
     setLastActiveSpace('admin');
-    try {
-      localStorage.setItem(LAST_SPACE_KEY, 'admin');
-    } catch (e) {}
     setCurrentScreen('super-admin');
     setNavigationHistory(['super-admin']);
   };
@@ -465,6 +478,7 @@ export function AppProvider({ children }) {
     try {
       localStorage.setItem(LAST_SPACE_KEY, uniqueId);
       localStorage.setItem('placepro_is_superadmin', 'false');
+      localStorage.setItem('placepro_logged_in', 'true');
     } catch (e) {}
 
     const newUrl = `${window.location.origin}${window.location.pathname}?agency=${uniqueId}`;

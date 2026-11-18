@@ -18,7 +18,7 @@ const ABIDJAN_COMMUNES = [
   'Autre commune'
 ];
 
-export default function LoginView() {
+export default function LoginView({ initialTab = 'login', onBackToLanding }) {
   const { 
     agencies, 
     login, 
@@ -32,7 +32,13 @@ export default function LoginView() {
   } = useApp();
 
   // Mode principal : 'login' (Connexion) ou 'register' (Créer mon espace agence)
-  const [activeTab, setActiveTab] = useState('login');
+  const [activeTab, setActiveTab] = useState(initialTab);
+
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
 
   // ========================================================
   // ÉTATS DE CONNEXION (TAB 1)
@@ -258,6 +264,31 @@ export default function LoginView() {
         position: 'relative',
         transition: 'all 0.25s ease'
       }}>
+        {onBackToLanding && (
+          <button
+            type="button"
+            onClick={onBackToLanding}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: '#64748B',
+              fontSize: '13px',
+              fontWeight: 500,
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              marginBottom: '16px',
+              padding: '4px 0',
+              transition: 'color 0.2s'
+            }}
+            onMouseOver={(e) => e.currentTarget.style.color = 'var(--color-navy)'}
+            onMouseOut={(e) => e.currentTarget.style.color = '#64748B'}
+          >
+            ← Retour au site PlacePro
+          </button>
+        )}
+
         {/* En-tête PlacePro Sobre & Professionnel */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '20px', textAlign: 'center' }}>
           <div style={{
