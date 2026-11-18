@@ -268,7 +268,9 @@ export function AppProvider({ children }) {
     }
     try {
       localStorage.setItem('placepro_logged_in', 'true');
+      localStorage.setItem('placepro_is_superadmin', 'false');
     } catch (e) {}
+    setIsSuperAdmin(false);
     setIsLoggedIn(true);
     setCurrentScreen('dashboard');
     setNavigationHistory(['dashboard']);
@@ -279,9 +281,11 @@ export function AppProvider({ children }) {
     try {
       localStorage.setItem('placepro_logged_in', 'true');
       localStorage.setItem(LAST_SPACE_KEY, 'admin');
+      localStorage.setItem('placepro_is_superadmin', 'true');
     } catch (e) {}
     setIsLoggedIn(true);
     setIsSuperAdmin(true);
+    setCurrentAgencyId('admin');
     setLastActiveSpace('admin');
     setCurrentScreen('super-admin');
     setNavigationHistory(['super-admin']);

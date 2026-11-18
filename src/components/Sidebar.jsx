@@ -143,6 +143,34 @@ function MenuNavList({ isMobile = false, onOpenLogoutConfirm }) {
 
       {/* 4. Bas de la colonne (Sidebar Footer) */}
       <div className="sidebar-footer">
+        {/* Assistance WhatsApp Cyrille pour les agences clientes */}
+        {agency.agency_id !== 'admin' && (
+          <a
+            href="https://wa.me/2250502629821?text=Bonjour%20Cyrille,%20j'ai%20besoin%20d'aide%20sur%20mon%20espace%20PlacePro."
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              padding: '8px 12px',
+              backgroundColor: '#ECFDF5',
+              borderRadius: '10px',
+              fontSize: '11.5px',
+              color: '#065F46',
+              fontWeight: '700',
+              textDecoration: 'none',
+              border: '1px solid #A7F3D0',
+              marginBottom: '10px'
+            }}
+            title="Contacter directement Cyrille sur WhatsApp en cas de besoin"
+          >
+            <span>💬</span>
+            <span>Assistance WhatsApp</span>
+          </a>
+        )}
+
         {/* Profil Agence avec le badge rond IN / AD (Action Déconnexion) */}
         <div
           onClick={onOpenLogoutConfirm}

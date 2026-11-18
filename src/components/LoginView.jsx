@@ -43,11 +43,14 @@ export default function LoginView({ initialTab = 'login', onBackToLanding }) {
   // ========================================================
   // ÉTATS DE CONNEXION (TAB 1)
   // ========================================================
-  const [selectedSpace, setSelectedSpace] = useState(() => {
-    if (lastActiveSpace === 'admin') return 'admin';
-    if (lastActiveSpace && agencies.some(a => a.agency_id === lastActiveSpace)) return lastActiveSpace;
-    if (currentAgencyId && agencies.some(a => a.agency_id === currentAgencyId)) return currentAgencyId;
-    return agencies.length > 0 ? agencies[0].agency_id : 'admin';
+  const urlParams = new URLSearchParams(window.location.search);
+  const agencyUrlParam = urlParams.get('agency');
+  const matchedAgencyFromUrl = agencyUrlParam ? agencies.find(a => a.agency_id === agencyUrlParam) : null;
+
+  const [identifier, setIdentifier] = useState(() => {
+    if (matchedAgencyFromUrl) return matchedAgencyFromUrl.phone || '';
+    if (urlParams.get('admin') === 'true') return 'admin';
+    return '';
   });
 
   const [password, setPassword] = useState('');
@@ -56,16 +59,10 @@ export default function LoginView({ initialTab = 'login', onBackToLanding }) {
 
   // Synchronisation si la liste des agences charge depuis Supabase
   useEffect(() => {
-    if (selectedSpace !== 'admin') {
-      if (!agencies.some(a => a.agency_id === selectedSpace)) {
-        if (agencies.length > 0) {
-          setSelectedSpace(agencies[0].agency_id);
-        } else {
-          setSelectedSpace('admin');
-        }
-      }
+    if (!identifier && matchedAgencyFromUrl) {
+      setIdentifier(matchedAgencyFromUrl.phone || '');
     }
-  }, [agencies, selectedSpace]);
+  }, [agencies, matchedAgencyFromUrl]);
 
   // Changement de mot de passe sécurisé
   const [isChangingPassword, setIsChangingPassword] = useState(false);
@@ -75,16 +72,6 @@ export default function LoginView({ initialTab = 'login', onBackToLanding }) {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [passwordChangeError, setPasswordChangeError] = useState(null);
   const [successMsg, setSuccessMsg] = useState(null);
-
-  const isAdminSpace = selectedSpace === 'admin';
-  const selectedAgency = !isAdminSpace ? agencies.find(a => a.agency_id === selectedSpace) : null;
-  const selectedSpaceName = isAdminSpace 
-    ? "Administration PlacePro (Cyrille)" 
-    : (selectedAgency?.name || "Mon Espace Agence");
-
-  const expectedCurrentPassword = isAdminSpace 
-    ? (adminPassword || '0000') 
-    : (selectedAgency?.password || '1234');
 
   // ========================================================
   // ÉTATS D'INSCRIPTION SÉCURISÉE (TAB 2)
@@ -103,18 +90,28 @@ export default function LoginView({ initialTab = 'login', onBackToLanding }) {
   const [regError, setRegError] = useState(null);
   const [isSubmittingReg, setIsSubmittingReg] = useState(false);
 
-  // Soumission de connexion standard
+  // Soumission de connexion standard universelle
   const handleLoginSubmit = (e) => {
     e.preventDefault();
-    if (!password.trim()) {
+    setError(null);
+
+    const cleanId = (identifier || '').trim().replace(/\s+/g, '').replace(/^(\+225)/, '');
+    const cleanPwd = (password || '').trim();
+
+    if (!cleanId) {
+      setError("Veuillez saisir votre numéro de téléphone ou identifiant.");
+      return;
+    }
+
+    if (!cleanPwd) {
       setError("Veuillez saisir votre mot de passe.");
       return;
     }
-    setError(null);
 
-    // 1. Connexion à l'espace Administrateur (Cyrille)
-    if (isAdminSpace) {
-      if (password.trim() === adminPassword || password.trim() === '0000' || password.trim() === 'admin') {
+    // 1. Connexion Super Administrateur (Cyrille)
+    const isAdminId = cleanId.toLowerCase() === 'admin' || cleanId === '0502629821' || cleanId === '05 02 62 98 21';
+    if (isAdminId) {
+      if (cleanPwd === (adminPassword || '0000') || cleanPwd === '0000' || cleanPwd === 'admin') {
         loginAsSuperAdmin();
         return;
       } else {
@@ -123,19 +120,27 @@ export default function LoginView({ initialTab = 'login', onBackToLanding }) {
       }
     }
 
-    // 2. Connexion à un espace Agence
-    if (password.trim() === adminPassword || password.trim() === '0000' || password.trim() === 'admin') {
-      loginAsSuperAdmin();
-      return;
+    // 2. Connexion Espace Agence (Recherche par numéro de téléphone ou ID d'agence)
+    const foundAgency = agencies.find(a => {
+      const agPhone = (a.phone || '').replace(/[^0-9]/g, '');
+      const targetPhone = cleanId.replace(/[^0-9]/g, '');
+      const matchPhone = agPhone && targetPhone && (agPhone.slice(-10) === targetPhone.slice(-10));
+      const matchId = a.agency_id && a.agency_id.toLowerCase() === cleanId.toLowerCase();
+      return matchPhone || matchId;
+    });
+
+    if (foundAgency) {
+      const expectedPwd = foundAgency.password || '1234';
+      if (cleanPwd === expectedPwd || cleanPwd === (adminPassword || '0000') || cleanPwd === '0000') {
+        login(foundAgency.agency_id);
+        return;
+      } else {
+        setError(`Mot de passe incorrect pour l'agence « ${foundAgency.name} ».`);
+        return;
+      }
     }
 
-    const expectedPassword = selectedAgency?.password || '1234';
-    if (password.trim() !== expectedPassword) {
-      setError("Mot de passe incorrect pour cet espace agence.");
-      return;
-    }
-
-    login(selectedSpace);
+    setError("Aucun compte agence trouvé avec ce numéro. Vérifiez votre saisie ou créez votre espace avec 7 jours offerts.");
   };
 
   // Soumission de modification du mot de passe
@@ -143,44 +148,76 @@ export default function LoginView({ initialTab = 'login', onBackToLanding }) {
     e.preventDefault();
     setPasswordChangeError(null);
 
+    const cleanId = (identifier || '').trim().replace(/\s+/g, '').replace(/^(\+225)/, '');
+    if (!cleanId) {
+      setPasswordChangeError("Veuillez d'abord renseigner votre numéro de téléphone ou identifiant dans le formulaire.");
+      return;
+    }
+
     if (!oldPassword.trim()) {
       setPasswordChangeError("Veuillez saisir votre mot de passe actuel.");
       return;
     }
 
-    if (oldPassword.trim() !== expectedCurrentPassword && oldPassword.trim() !== '0000') {
-      setPasswordChangeError("L'ancien mot de passe saisi est incorrect.");
-      return;
-    }
-
-    if (!newPassword.trim()) {
-      setPasswordChangeError("Veuillez saisir votre nouveau mot de passe.");
-      return;
-    }
-    if (newPassword.trim().length < 4) {
-      setPasswordChangeError("Le mot de passe doit comporter au moins 4 caractères.");
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      setPasswordChangeError("Les deux nouveaux mots de passe saisis ne sont pas identiques.");
-      return;
-    }
-
-    if (isAdminSpace) {
+    // Vérifier si Admin
+    const isAdminId = cleanId.toLowerCase() === 'admin' || cleanId === '0502629821';
+    if (isAdminId) {
+      if (oldPassword.trim() !== (adminPassword || '0000') && oldPassword.trim() !== '0000') {
+        setPasswordChangeError("L'ancien mot de passe administrateur est incorrect.");
+        return;
+      }
+      if (newPassword.trim().length < 4) {
+        setPasswordChangeError("Le nouveau mot de passe doit comporter au moins 4 caractères.");
+        return;
+      }
+      if (newPassword !== confirmPassword) {
+        setPasswordChangeError("Les deux nouveaux mots de passe ne sont pas identiques.");
+        return;
+      }
       updateAdminPassword(newPassword.trim());
       setSuccessMsg("Mot de passe Administrateur mis à jour avec succès !");
       setTimeout(() => {
-        loginAsSuperAdmin();
-      }, 700);
-    } else {
-      if (updateAgencyPassword && selectedSpace) {
-        updateAgencyPassword(selectedSpace, newPassword.trim());
-      }
-      setSuccessMsg("Nouveau mot de passe enregistré avec succès ! Connexion...");
-      setTimeout(() => {
-        login(selectedSpace);
-      }, 700);
+        setIsChangingPassword(false);
+        setPassword(newPassword.trim());
+      }, 800);
+      return;
     }
+
+    // Vérifier si Agence
+    const foundAgency = agencies.find(a => {
+      const agPhone = (a.phone || '').replace(/[^0-9]/g, '');
+      const targetPhone = cleanId.replace(/[^0-9]/g, '');
+      return (agPhone && targetPhone && agPhone.slice(-10) === targetPhone.slice(-10)) || (a.agency_id.toLowerCase() === cleanId.toLowerCase());
+    });
+
+    if (!foundAgency) {
+      setPasswordChangeError("Aucune agence trouvée avec ce numéro de téléphone.");
+      return;
+    }
+
+    const expectedPwd = foundAgency.password || '1234';
+    if (oldPassword.trim() !== expectedPwd && oldPassword.trim() !== (adminPassword || '0000') && oldPassword.trim() !== '0000') {
+      setPasswordChangeError("L'ancien mot de passe est incorrect.");
+      return;
+    }
+
+    if (newPassword.trim().length < 4) {
+      setPasswordChangeError("Le nouveau mot de passe doit comporter au moins 4 caractères.");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordChangeError("Les deux nouveaux mots de passe ne sont pas identiques.");
+      return;
+    }
+
+    if (updateAgencyPassword) {
+      updateAgencyPassword(foundAgency.agency_id, newPassword.trim());
+    }
+    setSuccessMsg(`Mot de passe de l'agence « ${foundAgency.name} » mis à jour avec succès !`);
+    setTimeout(() => {
+      setIsChangingPassword(false);
+      setPassword(newPassword.trim());
+    }, 800);
   };
 
   // Soumission de création d'agence sécurisée
@@ -395,31 +432,57 @@ export default function LoginView({ initialTab = 'login', onBackToLanding }) {
             ======================================================== */}
         {activeTab === 'login' && !isChangingPassword && (
           <form onSubmit={handleLoginSubmit}>
-            {/* 1. Nom d'utilisateur / Nom de l'agence (PRÉREMPLI ET VERROUILLÉ) */}
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: 'var(--color-navy)', marginBottom: '6px' }}>
-                Nom d'utilisateur / Espace
-              </label>
-
+            {/* Bannière de bienvenue personnalisée si accès par lien WhatsApp spécifique */}
+            {matchedAgencyFromUrl && (
               <div style={{
-                width: '100%',
-                padding: '12px 14px',
+                backgroundColor: '#F0FDF4',
+                border: '1.5px solid #86EFAC',
                 borderRadius: '12px',
-                border: '1.5px solid var(--color-border)',
-                backgroundColor: '#F8FAFC',
-                color: 'var(--color-navy)',
-                fontSize: '13.5px',
-                fontWeight: '800',
+                padding: '10px 14px',
+                marginBottom: '16px',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '10px',
-                boxSizing: 'border-box'
+                color: '#166534',
+                fontSize: '12.5px',
+                fontWeight: '700'
               }}>
-                <span style={{ fontSize: '18px' }}>{isAdminSpace ? '👑' : '🏢'}</span>
-                <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {selectedSpaceName}
-                </span>
+                <span style={{ fontSize: '18px' }}>🏢</span>
+                <div>
+                  <div>Bienvenue sur l'espace <strong>{matchedAgencyFromUrl.name}</strong></div>
+                  <div style={{ fontSize: '11px', color: '#15803D', fontWeight: '500', marginTop: '1px' }}>
+                    Votre identifiant est pré-rempli. Saisissez votre mot de passe pour accéder à vos dossiers.
+                  </div>
+                </div>
               </div>
+            )}
+
+            {/* 1. Numéro de téléphone ou Identifiant */}
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: 'var(--color-navy)', marginBottom: '6px' }}>
+                Numéro de téléphone ou Identifiant *
+              </label>
+
+              <input
+                type="text"
+                value={identifier}
+                onChange={(e) => {
+                  setIdentifier(e.target.value);
+                  setError(null);
+                }}
+                placeholder="Ex: 07 08 09 10 11 (ou admin)"
+                style={{
+                  width: '100%',
+                  padding: '12px 14px',
+                  borderRadius: '12px',
+                  border: '1.5px solid var(--color-border)',
+                  backgroundColor: '#FFFFFF',
+                  fontSize: '13.5px',
+                  color: 'var(--color-navy)',
+                  outline: 'none',
+                  boxSizing: 'border-box'
+                }}
+              />
             </div>
 
             {/* 2. Mot de passe */}
@@ -795,10 +858,10 @@ export default function LoginView({ initialTab = 'login', onBackToLanding }) {
               <span style={{ fontSize: '20px' }}>🔑</span>
               <div>
                 <div style={{ fontSize: '13px', color: '#1E1B4B', fontWeight: '800' }}>
-                  Changement de mot de passe
+                  Changement de mot de passe sécurisé
                 </div>
                 <div style={{ fontSize: '11.5px', color: '#4338CA', marginTop: '2px' }}>
-                  Espace : <strong>{selectedSpaceName}</strong>
+                  Compte : <strong>{identifier || 'Renseignez votre numéro ci-dessus'}</strong>
                 </div>
               </div>
             </div>

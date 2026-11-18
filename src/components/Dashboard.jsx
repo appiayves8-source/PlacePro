@@ -14,6 +14,7 @@ import {
 export default function Dashboard() {
   const {
     agency,
+    isSuperAdmin,
     candidates,
     clients,
     placements,
@@ -64,8 +65,8 @@ export default function Dashboard() {
 
   return (
     <div className="dashboard-wrapper">
-      {/* Bandeau d'inspection si l'admin inspecte une agence spécifique */}
-      {agency.agency_id !== 'admin' && (
+      {/* Bandeau d'assistance actif UNIQUEMENT quand le Super Admin inspecte une agence spécifique */}
+      {isSuperAdmin && agency.agency_id !== 'admin' && (
         <div style={{
           backgroundColor: '#EFF6FF',
           border: '1.5px solid #3B82F6',
@@ -80,13 +81,13 @@ export default function Dashboard() {
           boxShadow: '0 2px 8px rgba(59, 130, 246, 0.12)'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <span style={{ fontSize: '22px' }}>👀</span>
+            <span style={{ fontSize: '22px' }}>🛠️</span>
             <div>
               <div style={{ color: '#1E3A8A', fontSize: '13.5px', fontWeight: '800' }}>
-                Mode Inspection : Espace Agence « {agency.name} » ({agency.neighborhood || agency.city})
+                Mode Assistance : Vous dépannez l'agence « {agency.name} » ({agency.neighborhood || agency.city})
               </div>
               <div style={{ color: '#2563EB', fontSize: '11.5px', marginTop: '1px' }}>
-                Vous visualisez l'espace privé de cette agence. Vous pouvez y gérer ses données ou revenir sur votre page Admin.
+                Vous visualisez l'espace privé de cette agence. Vous pouvez régler ses soucis puis revenir à votre Espace Admin.
               </div>
             </div>
           </div>
