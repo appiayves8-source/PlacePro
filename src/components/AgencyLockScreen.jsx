@@ -133,7 +133,7 @@ export default function AgencyLockScreen() {
           }}
         >
           <span>📱</span>
-          <span>Régler par Wave ou Orange Money</span>
+          <span>Régler par Wave ou MTN MoMo</span>
         </button>
 
         {/* Bouton de déconnexion pour changer d'agence ou quitter */}

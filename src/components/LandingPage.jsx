@@ -535,19 +535,19 @@ CB
 </div>
 {/* Payment Partners Visual Mention */}
 <div className="mt-14 pt-8 border-t border-white/10 flex flex-col sm:flex-row items-center justify-center gap-4 text-xs text-slateText">
-<span className="font-medium text-cream">Règlements acceptés par Wave Business, Orange Money et MTN</span>
+<span className="font-medium text-cream">Règlements d'abonnements par Wave et MTN MoMo</span>
 <div className="flex items-center gap-2">
 {/* Wave Badge */}
 <span className="px-2.5 py-1 rounded bg-sky-500/10 border border-sky-400/30 text-sky-300 font-bold text-[11px] flex items-center gap-1">
 <span className="w-2 h-2 rounded-full bg-sky-400"></span> Wave
             </span>
-{/* Orange Money Badge */}
-<span className="px-2.5 py-1 rounded bg-orange-500/10 border border-orange-500/30 text-orange-400 font-bold text-[11px] flex items-center gap-1">
-<span className="w-2 h-2 rounded-full bg-orange-500"></span> Orange Money
-            </span>
 {/* MTN Badge */}
 <span className="px-2.5 py-1 rounded bg-yellow-500/10 border border-yellow-500/30 text-yellow-300 font-bold text-[11px] flex items-center gap-1">
 <span className="w-2 h-2 rounded-full bg-yellow-400"></span> MTN MoMo
+            </span>
+{/* Orange Money Badge (Bientôt disponible) */}
+<span className="px-2.5 py-1 rounded bg-slate-800/80 border border-slate-700/60 text-slate-400 font-semibold text-[11px] flex items-center gap-1 opacity-60" title="Orange Money temporairement indisponible pour ce numéro">
+<span className="w-1.5 h-1.5 rounded-full bg-slate-500"></span> Orange Money (Bientôt)
             </span>
 </div>
 </div>

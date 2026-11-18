@@ -54,11 +54,12 @@ export default function PaymentModal() {
     },
     orange: {
       name: "Orange Money",
-      badgeColor: "#FF6600",
-      badgeBg: "#FFF1E6",
+      available: false,
+      badgeColor: "#94A3B8",
+      badgeBg: "#F1F5F9",
       logo: "🟠",
-      openAppUrl: "tel:*144#",
-      instruction: "Composez le #144# ou ouvrez l'application Orange Money (Max It) pour effectuer le transfert."
+      openAppUrl: null,
+      instruction: "Orange Money est temporairement indisponible pour ce numéro MTN (05). Merci d'effectuer votre transfert par Wave ou MTN MoMo."
     },
     mtn: {
       name: "MTN MoMo",
@@ -210,27 +211,7 @@ export default function PaymentModal() {
               >
                 <span style={{ fontSize: '18px' }}>🐧</span>
                 <span style={{ fontSize: '11.5px', fontWeight: '800', color: selectedOperator === 'wave' ? '#0284C7' : '#334155' }}>Wave</span>
-              </button>
-
-              {/* Orange Money */}
-              <button
-                type="button"
-                onClick={() => setSelectedOperator('orange')}
-                style={{
-                  padding: '8px 4px',
-                  borderRadius: '10px',
-                  border: selectedOperator === 'orange' ? '2px solid #FF6600' : '1px solid #CBD5E1',
-                  backgroundColor: selectedOperator === 'orange' ? '#FFF1E6' : '#FFFFFF',
-                  cursor: 'pointer',
-                  textAlign: 'center',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  gap: '3px'
-                }}
-              >
-                <span style={{ fontSize: '18px' }}>🟠</span>
-                <span style={{ fontSize: '11.5px', fontWeight: '800', color: selectedOperator === 'orange' ? '#C2410C' : '#334155' }}>Orange</span>
+                <span style={{ fontSize: '9px', fontWeight: '700', color: '#0284C7', backgroundColor: '#BAE6FD', padding: '1px 5px', borderRadius: '4px' }}>Actif</span>
               </button>
 
               {/* MTN MoMo */}
@@ -251,7 +232,32 @@ export default function PaymentModal() {
                 }}
               >
                 <span style={{ fontSize: '18px' }}>🟡</span>
-                <span style={{ fontSize: '11.5px', fontWeight: '800', color: selectedOperator === 'mtn' ? '#854D0E' : '#334155' }}>MTN</span>
+                <span style={{ fontSize: '11.5px', fontWeight: '800', color: selectedOperator === 'mtn' ? '#854D0E' : '#334155' }}>MTN MoMo</span>
+                <span style={{ fontSize: '9px', fontWeight: '700', color: '#854D0E', backgroundColor: '#FEF08A', padding: '1px 5px', borderRadius: '4px' }}>Actif</span>
+              </button>
+
+              {/* Orange Money (Temporairement Indisponible) */}
+              <button
+                type="button"
+                disabled={true}
+                title="Orange Money est temporairement indisponible pour ce numéro MTN (05). Veuillez utiliser Wave ou MTN MoMo."
+                style={{
+                  padding: '8px 4px',
+                  borderRadius: '10px',
+                  border: '1px dashed #CBD5E1',
+                  backgroundColor: '#F8FAFC',
+                  cursor: 'not-allowed',
+                  textAlign: 'center',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '3px',
+                  opacity: 0.65
+                }}
+              >
+                <span style={{ fontSize: '18px', filter: 'grayscale(50%)' }}>🟠</span>
+                <span style={{ fontSize: '11.5px', fontWeight: '700', color: '#94A3B8' }}>Orange</span>
+                <span style={{ fontSize: '8.5px', fontWeight: '800', color: '#DC2626', backgroundColor: '#FEE2E2', padding: '1px 4px', borderRadius: '4px' }}>Bientôt</span>
               </button>
             </div>
           </div>

@@ -1,6 +1,6 @@
 // ========================================================
 // CONFIGURATION OFFICIELLE PLACEPRO - ADMINISTRATION CYRILLE
-// Centralise le numéro officiel pour Wave, Orange Money et WhatsApp.
+// Centralise le numéro officiel pour Wave, MTN MoMo et WhatsApp.
 // Tiré de la variable d'environnement VITE_ADMIN_PHONE dans .env
 // ========================================================
 

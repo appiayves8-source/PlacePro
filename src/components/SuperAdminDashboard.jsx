@@ -54,7 +54,7 @@ export default function SuperAdminDashboard() {
     const expiry = new Date(agency.subscriptionExpiry || Date.now()).toLocaleDateString('fr-FR');
     
     const message = encodeURIComponent(
-      `Bonjour ${agency.managerName || agency.name}, c'est Cyrille de PlacePro.\n\nNous faisons le point sur l'abonnement de votre espace *« ${agency.name} »*.\n\nVotre abonnement arrive à échéance le *${expiry}* (Montant : *${fee} FCFA*).\n\nPour continuer à suivre vos placements et votre personnel sans coupure, vous pouvez effectuer votre transfert Wave ou Orange Money sur notre numéro officiel : ${ADMIN_CONFIG.phoneFormatted}.\n\nMerci de votre confiance et bonne journée !`
+      `Bonjour ${agency.managerName || agency.name}, c'est Cyrille de PlacePro.\n\nNous faisons le point sur l'abonnement de votre espace *« ${agency.name} »*.\n\nVotre abonnement arrive à échéance le *${expiry}* (Montant : *${fee} FCFA*).\n\nPour continuer à suivre vos placements et votre personnel sans coupure, vous pouvez effectuer votre transfert Wave ou MTN MoMo sur notre numéro officiel : ${ADMIN_CONFIG.phoneFormatted}.\n\nMerci de votre confiance et bonne journée !`
     );
     return `https://wa.me/${cleanPhone}?text=${message}`;
   };
@@ -633,7 +633,7 @@ export default function SuperAdminDashboard() {
               {superAdminPayments.length === 0 ? (
                 <tr>
                   <td colSpan="6" style={{ padding: '24px', textAlign: 'center', color: '#64748B' }}>
-                    Aucun encaissement d'abonnement pour l'instant. Les renouvellements Wave et Orange Money s'afficheront ici.
+                    Aucun encaissement d'abonnement pour l'instant. Les renouvellements Wave et MTN MoMo s'afficheront ici.
                   </td>
                 </tr>
               ) : (

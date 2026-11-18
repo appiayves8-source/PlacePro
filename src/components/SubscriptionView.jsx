@@ -27,7 +27,7 @@ export default function SubscriptionView() {
   const getWhatsAppPayUrl = (plan) => {
     const fee = plan.price.toLocaleString('fr-FR');
     const message = (
-      `Bonjour Cyrille (PlacePro),\n\nC'est ${agency.managerName || agency.name} de l'agence *« ${agency.name} »*.\n\nJe souhaite activer/renouveler notre abonnement sur la formule *${plan.name}* (*${fee} FCFA* ${plan.period}).\n\nMerci de me confirmer le règlement Wave / Orange Money pour la prise en compte immédiate !`
+      `Bonjour Cyrille (PlacePro),\n\nC'est ${agency.managerName || agency.name} de l'agence *« ${agency.name} »*.\n\nJe souhaite activer/renouveler notre abonnement sur la formule *${plan.name}* (*${fee} FCFA* ${plan.period}).\n\nMerci de me confirmer le règlement Wave / MTN MoMo pour la prise en compte immédiate !`
     );
     return ADMIN_CONFIG.getWhatsAppLink(message);
   };
@@ -67,7 +67,7 @@ export default function SubscriptionView() {
           Mon Abonnement PlacePro
         </h1>
         <p style={{ fontSize: '13px', color: '#64748B', marginTop: '6px', maxWidth: '640px', lineHeight: 1.5 }}>
-          Consultez votre formule actuelle, suivez votre période de validité et réglez facilement votre abonnement par Mobile Money (Wave ou Orange Money).
+          Consultez votre formule actuelle, suivez votre période de validité et réglez facilement votre abonnement par Mobile Money (Wave ou MTN MoMo).
         </p>
       </div>
 
@@ -181,7 +181,7 @@ export default function SubscriptionView() {
           Choisissez la formule adaptée à votre agence
         </h2>
         <p style={{ fontSize: '12.5px', color: '#64748B', margin: '0 0 20px 0' }}>
-          Sélectionnez votre formule ci-dessous. Vous pouvez ensuite valider votre règlement instantanément via Wave ou Orange Money.
+          Sélectionnez votre formule ci-dessous. Vous pouvez ensuite valider votre règlement instantanément via Wave ou MTN MoMo.
         </p>
       </div>
 
@@ -362,7 +362,7 @@ export default function SubscriptionView() {
             📱 Comment effectuer votre règlement ?
           </div>
           <div style={{ fontSize: '12.5px', color: '#475569', lineHeight: 1.5, maxWidth: '620px' }}>
-            Effectuez simplement votre transfert <strong>Wave</strong> ou <strong>Orange Money</strong> vers le numéro officiel de la plateforme PlacePro : <strong>{ADMIN_CONFIG.phoneFormatted}</strong> (Cyrille / Fondateur). Votre espace est validé immédiatement dès réception du transfert.
+            Effectuez simplement votre transfert <strong>Wave</strong> ou <strong>MTN MoMo</strong> vers le numéro officiel de la plateforme PlacePro : <strong>{ADMIN_CONFIG.phoneFormatted}</strong> (Cyrille / Fondateur). Votre espace est validé immédiatement dès réception du transfert.
           </div>
         </div>
 
