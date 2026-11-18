@@ -35,8 +35,8 @@ export default function TopBar() {
           </svg>
         </button>
 
-        {/* La "Cage" : Visible UNIQUEMENT pour le Super Administrateur (Cyrille) */}
-        {isSuperAdmin ? (
+        {/* La "Cage" : Visible pour le Super Administrateur (Cyrille) ou sur l'Espace Admin */}
+        {(isSuperAdmin || agency.agency_id === 'admin') ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <select
               value={agency.agency_id || 'admin'}
@@ -92,8 +92,8 @@ export default function TopBar() {
           </div>
         )}
 
-        {/* Bouton Super Admin : Visible UNIQUEMENT pour le Super Administrateur (Cyrille) */}
-        {isSuperAdmin && (
+        {/* Bouton Super Admin : Toujours présent pour l'Administrateur (Cyrille) */}
+        {(isSuperAdmin || agency.agency_id === 'admin' || currentScreen === 'super-admin') && (
           <button
             onClick={() => navigateTo('super-admin')}
             className="btn"

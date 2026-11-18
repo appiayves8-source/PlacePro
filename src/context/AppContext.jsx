@@ -75,9 +75,16 @@ export function AppProvider({ children }) {
   // État Super Admin (Cyrille - Propriétaire de la plateforme)
   const [isSuperAdmin, setIsSuperAdmin] = useState(() => {
     try {
-      return localStorage.getItem('placepro_is_superadmin') === 'true' || adminParam === 'true';
+      // Si un paramètre d'agence spécifique (autre que admin) est dans l'URL, ce n'est pas le Super Admin
+      if (agencyParam && agencyParam !== 'admin') {
+        return false;
+      }
+      const saved = localStorage.getItem('placepro_is_superadmin');
+      if (saved !== null) return saved === 'true';
+      // Par défaut sur le lien principal Vercel, c'est l'espace Admin de Cyrille
+      return true;
     } catch (e) {
-      return false;
+      return true;
     }
   });
 
