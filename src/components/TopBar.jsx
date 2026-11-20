@@ -35,17 +35,17 @@ export default function TopBar() {
           </svg>
         </button>
 
-        {/* La "Cage" : Visible pour le Super Administrateur (Cyrille) ou sur l'Espace Admin */}
-        {(isSuperAdmin || agency.agency_id === 'admin') ? (
+        {/* La "Cage" : STRICTEMENT RÉSERVÉE au Super Administrateur */}
+        {isSuperAdmin ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <select
-              value={agency.agency_id || 'admin'}
+              value={agency?.agency_id || 'admin'}
               onChange={(e) => switchAgency(e.target.value)}
               style={{
                 padding: '8px 12px',
                 borderRadius: '10px',
-                border: agency.agency_id === 'admin' ? '1.5px solid var(--color-gold)' : '1.5px solid #3B82F6',
-                backgroundColor: agency.agency_id === 'admin' ? '#FAF5EA' : '#EFF6FF',
+                border: agency?.agency_id === 'admin' ? '1.5px solid var(--color-gold)' : '1.5px solid #3B82F6',
+                backgroundColor: agency?.agency_id === 'admin' ? '#FAF5EA' : '#EFF6FF',
                 color: 'var(--color-navy)',
                 fontSize: '12.5px',
                 fontWeight: '800',
@@ -88,12 +88,17 @@ export default function TopBar() {
             whiteSpace: 'nowrap'
           }}>
             <span>🏢</span>
-            <span>{agency.name}</span>
+            <span>{agency?.name || 'Mon Espace Agence'}</span>
+            {agency?.neighborhood && (
+              <span style={{ fontSize: '11px', color: '#64748B', fontWeight: '600' }}>
+                • {agency.neighborhood}
+              </span>
+            )}
           </div>
         )}
 
-        {/* Bouton Super Admin : Toujours présent pour l'Administrateur (Cyrille) */}
-        {(isSuperAdmin || agency.agency_id === 'admin' || currentScreen === 'super-admin') && (
+        {/* Bouton Super Admin : STRICTEMENT RÉSERVÉ au Super Administrateur */}
+        {isSuperAdmin && (
           <button
             onClick={() => navigateTo('super-admin')}
             className="btn"

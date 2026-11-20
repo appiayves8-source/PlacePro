@@ -117,15 +117,15 @@ export default function Dashboard() {
         <div className="hero-header">
           <div>
             <div className="hero-date-badge">
-              <span>{agency.agency_id === 'admin' ? '👑 Espace Administrateur Plateforme' : '🏢 Espace Agence Partenaire'}</span>
+              <span>{isSuperAdmin && agency?.agency_id === 'admin' ? '👑 Espace Administrateur Plateforme' : '🏢 Espace Agence Partenaire'}</span>
               <span>•</span>
               <span>Abidjan, Côte d'Ivoire</span>
             </div>
             <h1 className="hero-title">
-              {agency.agency_id === 'admin' ? "Bonjour Cyrille (Super Administrateur)," : `Bonjour ! ${agency.name},`}
+              {isSuperAdmin && agency?.agency_id === 'admin' ? "Bonjour Cyrille (Super Administrateur)," : `Bonjour ! ${agency?.name || ''},`}
             </h1>
             <p className="hero-subtitle">
-              {agency.agency_id === 'admin' 
+              {isSuperAdmin && agency?.agency_id === 'admin' 
                 ? "Supervision générale de la plateforme PlacePro et de l'ensemble des agences" 
                 : "Suivi en temps réel de votre personnel placé et de vos encaissements"}
             </p>

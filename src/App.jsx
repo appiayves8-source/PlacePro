@@ -39,6 +39,12 @@ function AppContent() {
   // Mode d'authentification demandé depuis la landing page ('login' ou 'register')
   const [authMode, setAuthMode] = useState(() => {
     try {
+      const p = new URLSearchParams(window.location.search);
+      // Si l'utilisateur clique sur un lien d'agence (?agency=...) ou d'auth directe
+      if (p.get('agency')) return 'login';
+      if (p.get('login') === 'true' || p.get('admin') === 'true' || p.get('auth') === 'login') return 'login';
+      if (p.get('register') === 'true' || p.get('trial') === 'true' || p.get('auth') === 'register') return 'register';
+
       // Détecter si on est en mode PWA / Application installée (standalone)
       const isStandalone = (typeof window !== 'undefined') && (
         window.matchMedia('(display-mode: standalone)').matches ||
@@ -46,10 +52,6 @@ function AppContent() {
         document.referrer.includes('android-app://')
       );
       if (isStandalone) return 'login';
-
-      const p = new URLSearchParams(window.location.search);
-      if (p.get('login') === 'true' || p.get('admin') === 'true' || p.get('auth') === 'login') return 'login';
-      if (p.get('register') === 'true' || p.get('trial') === 'true' || p.get('auth') === 'register') return 'register';
     } catch (e) {}
     return null;
   });
@@ -65,23 +67,20 @@ function AppContent() {
 
   // Si l'utilisateur n'est pas connecté à un espace de travail
   if (!isLoggedIn) {
-    if (authMode || currentScreen === 'login') {
+    // Si l'utilisateur a explicitement demandé l'authentification (clic CTA, PWA ou lien direct)
+    if (authMode) {
       return (
         <>
           <LoginView 
-            initialTab={authMode || 'login'} 
-            onBackToLanding={() => {
-              setAuthMode(null);
-              if (currentScreen === 'login') {
-                navigateTo('dashboard');
-              }
-            }} 
+            initialTab={authMode} 
+            onBackToLanding={() => setAuthMode(null)} 
           />
           <CreateAgencyModal />
         </>
       );
     }
 
+    // Par défaut pour tout visiteur qui ouvre l'application : La Landing Page de présentation
     return (
       <LandingPage 
         onNavigateToAuth={(mode) => setAuthMode(mode)} 

@@ -11,6 +11,7 @@ import {
 function MenuNavList({ isMobile = false, onOpenLogoutConfirm }) {
   const { 
     agency,
+    isSuperAdmin,
     currentScreen, 
     navigateTo, 
     urgentItems, 
@@ -144,7 +145,7 @@ function MenuNavList({ isMobile = false, onOpenLogoutConfirm }) {
       {/* 4. Bas de la colonne (Sidebar Footer) */}
       <div className="sidebar-footer">
         {/* Assistance WhatsApp Cyrille pour les agences clientes */}
-        {agency.agency_id !== 'admin' && (
+        {(!isSuperAdmin || agency?.agency_id !== 'admin') && (
           <a
             href="https://wa.me/2250502629821?text=Bonjour%20Cyrille,%20j'ai%20besoin%20d'aide%20sur%20mon%20espace%20PlacePro."
             target="_blank"
@@ -178,12 +179,12 @@ function MenuNavList({ isMobile = false, onOpenLogoutConfirm }) {
           title="Cliquer pour vous déconnecter de votre espace"
         >
           <div className="sidebar-profile-avatar">
-            {agency.logoInitials}
+            {agency?.logoInitials || 'AG'}
           </div>
           <div className="sidebar-profile-info">
-            <span className="sidebar-profile-name">{agency.agency_id === 'admin' ? "Cyrille" : agency.name}</span>
+            <span className="sidebar-profile-name">{isSuperAdmin && agency?.agency_id === 'admin' ? "Cyrille" : agency?.name}</span>
             <span className="sidebar-profile-sub">
-              {agency.agency_id === 'admin' ? "👑 Super Administrateur" : (agency.managerName || 'Espace Connecté')} • Déconnexion
+              {isSuperAdmin && agency?.agency_id === 'admin' ? "👑 Super Administrateur" : (agency?.managerName || 'Espace Connecté')} • Déconnexion
             </span>
           </div>
           <div className="sidebar-profile-logout-icon">
@@ -206,6 +207,7 @@ function MenuNavList({ isMobile = false, onOpenLogoutConfirm }) {
 export default function Sidebar() {
   const { 
     agency, 
+    isSuperAdmin,
     isMobileMenuOpen, 
     setIsMobileMenuOpen,
     logout 
@@ -245,7 +247,7 @@ export default function Sidebar() {
               PlacePro
             </span>
             <span style={{ fontSize: '10.5px', fontWeight: '700', color: 'var(--color-gold)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-              {agency.agency_id === 'admin' ? "👑 Administration PlacePro" : agency.name}
+              {(isSuperAdmin && agency?.agency_id === 'admin') ? "👑 Administration PlacePro" : (agency?.name || "Mon Agence")}
             </span>
           </div>
         </div>
@@ -291,7 +293,7 @@ export default function Sidebar() {
                     PlacePro
                   </span>
                   <span style={{ fontSize: '10.5px', fontWeight: '700', color: 'var(--color-gold)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                    {agency.agency_id === 'admin' ? "👑 Administration PlacePro" : agency.name}
+                    {(isSuperAdmin && agency?.agency_id === 'admin') ? "👑 Administration PlacePro" : (agency?.name || "Mon Agence")}
                   </span>
                 </div>
               </div>

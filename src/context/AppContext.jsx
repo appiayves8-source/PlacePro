@@ -231,8 +231,8 @@ export function AppProvider({ children }) {
           payments: dbPayments || []
         });
 
-        // Par défaut, l'espace actif est l'espace Administrateur de Cyrille
-        if (!currentAgencyId) {
+        // L'espace 'admin' n'est activé que si l'utilisateur est authentifié en tant que Super Admin
+        if (!currentAgencyId && isSuperAdmin) {
           setCurrentAgencyId('admin');
         }
       } catch (err) {
@@ -244,9 +244,27 @@ export function AppProvider({ children }) {
     return () => { isMounted = false; };
   }, []);
 
-  const currentAgency = (currentAgencyId === 'admin')
+  const currentAgency = (isSuperAdmin && currentAgencyId === 'admin')
     ? ADMIN_SPACE
-    : (agencies.find(a => a.agency_id === currentAgencyId) || (isSuperAdmin ? ADMIN_SPACE : (agencies[0] || ADMIN_SPACE)));
+    : (agencies.find(a => a.agency_id === currentAgencyId) || (isSuperAdmin ? ADMIN_SPACE : {
+        agency_id: currentAgencyId || 'agency_pending',
+        name: 'Mon Agence',
+        managerName: 'Gérante',
+        phone: '',
+        neighborhood: 'Abidjan',
+        city: "Abidjan, Côte d'Ivoire",
+        logoInitials: 'AG',
+        currency: 'FCFA',
+        plan: 'Pro',
+        password: '',
+        monthlyFee: 39000,
+        subscriptionStatus: 'trial',
+        subscriptionExpiry: null,
+        paymentMethod: 'Wave Business',
+        lastPaymentDate: null,
+        totalPaidToAdmin: 0,
+        createdAt: new Date().toISOString()
+      }));
 
   // Navigation
   const [currentScreen, setCurrentScreen] = useState(() => {
@@ -254,7 +272,6 @@ export function AppProvider({ children }) {
       const isLoggedInSaved = localStorage.getItem('placepro_logged_in') === 'true';
       const savedAdmin = localStorage.getItem('placepro_is_superadmin') === 'true';
       if (isLoggedInSaved && savedAdmin) return 'super-admin';
-      if (!isLoggedInSaved) return 'login';
     } catch (e) {}
     return adminParam === 'true' ? 'super-admin' : 'dashboard';
   });
@@ -693,7 +710,7 @@ export function AppProvider({ children }) {
   // - Si on est sur l'Espace Admin de Cyrille : vue d'ensemble globale de la plateforme
   // - Si on inspecte une agence spécifique : vue strictement cloisonnée sur cette agence
   // ========================================================
-  const isAdminSpace = currentAgency.agency_id === 'admin';
+  const isAdminSpace = Boolean(isSuperAdmin && currentAgency?.agency_id === 'admin');
   const currentCandidates = isAdminSpace ? state.candidates : state.candidates.filter(c => c.agency_id === currentAgency.agency_id);
   const currentClients = isAdminSpace ? state.clients : state.clients.filter(cl => cl.agency_id === currentAgency.agency_id);
   const currentPlacements = isAdminSpace ? state.placements : state.placements.filter(p => p.agency_id === currentAgency.agency_id);
