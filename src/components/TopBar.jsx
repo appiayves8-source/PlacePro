@@ -14,7 +14,9 @@ export default function TopBar() {
     setIsNotificationsOpen,
     setIsAddCandidateOpen,
     setIsAddClientOpen,
-    setIsMobileMenuOpen
+    setIsMobileMenuOpen,
+    isStandalone,
+    installApp
   } = useApp();
 
   return (
@@ -141,6 +143,19 @@ export default function TopBar() {
 
       {/* Actions à droite */}
       <div className="topbar-actions">
+        {/* Bouton d'installation de l'application (Masqué si l'application est déjà installée en mode standalone) */}
+        {!isStandalone && (
+          <button
+            onClick={installApp}
+            className="topbar-install-btn"
+            title="Installer l'application PlacePro sur votre téléphone ou ordinateur"
+            type="button"
+          >
+            <span style={{ fontSize: '15px' }}>📲</span>
+            <span className="install-btn-text">Installer l'App</span>
+          </button>
+        )}
+
         <button
           onClick={() => setIsAddClientOpen(true)}
           className="btn btn-outline topbar-btn-family"

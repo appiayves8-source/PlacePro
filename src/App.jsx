@@ -23,6 +23,7 @@ import SubscriptionView from './components/SubscriptionView';
 import LoginView from './components/LoginView';
 import PaymentModal from './components/PaymentModal';
 import LandingPage from './components/LandingPage';
+import InstallAppModal from './components/InstallAppModal';
 
 function AppContent() {
   const {
@@ -150,6 +151,7 @@ function AppContent() {
       <CreateAgencyModal />
       <NotificationsModal />
       <PaymentModal />
+      <InstallAppModal />
     </div>
   );
 }

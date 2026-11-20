@@ -356,6 +356,56 @@ export function AppProvider({ children }) {
     period: '/mois'
   });
 
+  // Gestion PWA & Installation Application (Accessible depuis la TopBar)
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+  const [isStandalone, setIsStandalone] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return (
+      window.matchMedia('(display-mode: standalone)').matches ||
+      window.navigator.standalone === true ||
+      document.referrer.includes('android-app://')
+    );
+  });
+  const [isInstallModalOpen, setIsInstallModalOpen] = useState(false);
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+
+    const handleAppInstalled = () => {
+      setDeferredPrompt(null);
+      setIsStandalone(true);
+      setIsInstallModalOpen(false);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    window.addEventListener('appinstalled', handleAppInstalled);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('appinstalled', handleAppInstalled);
+    };
+  }, []);
+
+  const installApp = async () => {
+    if (deferredPrompt) {
+      try {
+        deferredPrompt.prompt();
+        const choice = await deferredPrompt.userChoice;
+        if (choice && choice.outcome === 'accepted') {
+          setDeferredPrompt(null);
+        }
+      } catch (err) {
+        console.warn("[PlacePro] Erreur prompt installation:", err);
+        setIsInstallModalOpen(true);
+      }
+    } else {
+      setIsInstallModalOpen(true);
+    }
+  };
+
   const openSubscriptionPayment = (plan = null) => {
     if (plan) {
       setPaymentModalData({
@@ -1192,7 +1242,12 @@ export function AppProvider({ children }) {
         isPaymentModalOpen,
         setIsPaymentModalOpen,
         paymentModalData,
-        openSubscriptionPayment
+        openSubscriptionPayment,
+        // Installation PWA
+        isStandalone,
+        isInstallModalOpen,
+        setIsInstallModalOpen,
+        installApp
       }}
     >
       {children}
